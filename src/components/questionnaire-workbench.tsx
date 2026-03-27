@@ -1,8 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import clsx from "clsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { brandArt } from "@/lib/brand-art";
 import { StatusChip } from "@/components/status-chip";
 
 type Citation = {
@@ -19,6 +21,7 @@ type WorkbenchItem = {
   citations: Citation[];
   reviewStatus: "DRAFT" | "NEEDS_REVIEW" | "APPROVED";
   reuseMatchType: "EXACT" | "NEAR_EXACT" | "SEMANTIC" | null;
+  notFoundReason?: string | null;
 };
 
 type WorkbenchData = {
@@ -35,6 +38,19 @@ type WorkbenchData = {
   items: WorkbenchItem[];
 };
 
+type MobilePanel = "queue" | "answer" | "evidence";
+
+function getReviewTone(reviewStatus: WorkbenchItem["reviewStatus"]) {
+  switch (reviewStatus) {
+    case "APPROVED":
+      return "success";
+    case "NEEDS_REVIEW":
+      return "warning";
+    default:
+      return "neutral";
+  }
+}
+
 export function QuestionnaireWorkbench(props: {
   workspaceSlug: string;
   initialData: WorkbenchData;
@@ -45,6 +61,7 @@ export function QuestionnaireWorkbench(props: {
   const [draftAnswer, setDraftAnswer] = useState(props.initialData.items[0]?.answer ?? "");
   const [message, setMessage] = useState("");
   const [isMutating, setIsMutating] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState<MobilePanel>("answer");
   const submitReviewRef = useRef<(reviewStatus: "APPROVED" | "NEEDS_REVIEW") => Promise<void>>(async () => {});
 
   const selectedItem = data.items[selectedIndex] ?? null;
@@ -62,6 +79,7 @@ export function QuestionnaireWorkbench(props: {
       if (event.metaKey || event.ctrlKey || event.altKey) {
         return;
       }
+
       const target = event.target as HTMLElement | null;
       const isTextInput =
         target?.tagName === "TEXTAREA" ||
@@ -103,6 +121,14 @@ export function QuestionnaireWorkbench(props: {
     return `${data.questionnaire.approvedCount}/${data.questionnaire.totalCount} approved`;
   }, [data.questionnaire.approvedCount, data.questionnaire.totalCount]);
 
+  const answeredPercentage = useMemo(() => {
+    if (data.questionnaire.totalCount === 0) {
+      return 0;
+    }
+
+    return Math.round((data.questionnaire.answeredCount / data.questionnaire.totalCount) * 100);
+  }, [data.questionnaire.answeredCount, data.questionnaire.totalCount]);
+
   async function refreshWorkbench() {
     const response = await fetch(
       `/api/questionnaires/${data.questionnaire.id}?workspaceSlug=${encodeURIComponent(props.workspaceSlug)}`,
@@ -123,6 +149,7 @@ export function QuestionnaireWorkbench(props: {
   async function runAutofillBatch() {
     setIsMutating(true);
     setMessage("");
+
     try {
       const response = await fetch(`/api/questionnaires/${data.questionnaire.id}/autofill`, {
         method: "POST",
@@ -149,18 +176,17 @@ export function QuestionnaireWorkbench(props: {
     }
   }
 
-  const submitReview = useCallback(async (reviewStatus: "APPROVED" | "NEEDS_REVIEW") => {
-    if (!selectedItem) {
-      return;
-    }
+  const submitReview = useCallback(
+    async (reviewStatus: "APPROVED" | "NEEDS_REVIEW") => {
+      if (!selectedItem) {
+        return;
+      }
 
-    setIsMutating(true);
-    setMessage("");
+      setIsMutating(true);
+      setMessage("");
 
-    try {
-      const response = await fetch(
-        `/api/questionnaires/${data.questionnaire.id}/items/${selectedItem.id}/review`,
-        {
+      try {
+        const response = await fetch(`/api/questionnaires/${data.questionnaire.id}/items/${selectedItem.id}/review`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -170,24 +196,26 @@ export function QuestionnaireWorkbench(props: {
             answer: draftAnswer,
             reviewStatus
           })
+        });
+
+        const payload = (await response.json()) as WorkbenchData & { error?: string };
+        if (!response.ok) {
+          throw new Error(payload.error ?? "Review update failed.");
         }
-      );
 
-      const payload = (await response.json()) as WorkbenchData & { error?: string };
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Review update failed.");
+        setData(payload);
+        setMessage(reviewStatus === "APPROVED" ? "Answer approved." : "Marked for review.");
+        setSelectedIndex((current) => Math.min(payload.items.length - 1, current + 1));
+        setMobilePanel("answer");
+        router.refresh();
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "Review update failed.");
+      } finally {
+        setIsMutating(false);
       }
-
-      setData(payload);
-      setMessage(reviewStatus === "APPROVED" ? "Answer approved." : "Marked for review.");
-      setSelectedIndex((current) => Math.min(payload.items.length - 1, current + 1));
-      router.refresh();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Review update failed.");
-    } finally {
-      setIsMutating(false);
-    }
-  }, [draftAnswer, props.workspaceSlug, router, selectedItem, data.questionnaire.id]);
+    },
+    [data.questionnaire.id, draftAnswer, props.workspaceSlug, router, selectedItem]
+  );
 
   submitReviewRef.current = submitReview;
 
@@ -198,49 +226,108 @@ export function QuestionnaireWorkbench(props: {
     }, 600);
   }
 
+  function handleSelectIndex(index: number) {
+    setSelectedIndex(index);
+    setMobilePanel("answer");
+  }
+
   if (!selectedItem) {
     return null;
   }
 
   return (
     <div className="workbench-shell">
-      <div className="workbench-topbar panel">
-        <div>
+      <section className="workbench-stage">
+        <div className="workbench-stage-art">
+          <Image
+            alt=""
+            aria-hidden="true"
+            className="art-image art-image-desktop"
+            fill
+            priority
+            sizes="100vw"
+            src={brandArt.workbenchDesktop}
+          />
+          <Image alt="" aria-hidden="true" className="art-image art-image-mobile" fill sizes="100vw" src={brandArt.workbenchMobile} />
+        </div>
+
+        <div className="workbench-stage-copy">
+          <span className="eyebrow">Review workbench</span>
           <h1>{data.questionnaire.name}</h1>
-          <p>Review queue with evidence on the right, writing surface in the middle, and keyboard-first movement.</p>
+          <p>
+            Stay inside one proof canvas: queue on the left, draft in the center, evidence in view, and clear actions to
+            move the file forward.
+          </p>
+          <div className="workbench-stage-stats">
+            <div>
+              <span>{progressText}</span>
+              <strong>{answeredPercentage}% answered</strong>
+            </div>
+            <div>
+              <span>Needs review</span>
+              <strong>{data.questionnaire.needsReviewCount}</strong>
+            </div>
+            <div>
+              <span>Autofill cursor</span>
+              <strong>{data.questionnaire.autofillCursor}</strong>
+            </div>
+          </div>
         </div>
-        <div className="workbench-summary">
-          <strong>{progressText}</strong>
-          <span>{data.questionnaire.needsReviewCount} need review</span>
-        </div>
-      </div>
 
-      <div className="workbench-toolbar panel">
-        <div className="toolbar-shortcuts">
-          <span>Shortcuts</span>
-          <small>Shift+J previous</small>
-          <small>Shift+K next</small>
-          <small>Shift+A approve</small>
-          <small>Shift+R needs review</small>
+        <div className="workbench-toolbar workbench-toolbar-stage">
+          <div className="toolbar-shortcuts">
+            <span>Shortcuts</span>
+            <small>Shift+J previous</small>
+            <small>Shift+K next</small>
+            <small>Shift+A approve</small>
+            <small>Shift+R needs review</small>
+          </div>
+          <div className="toolbar-actions">
+            <button className="button-secondary button-secondary-dark" disabled={isMutating} onClick={() => void runAutofillBatch()} type="button">
+              {isMutating ? "Running batch..." : "Run autofill batch"}
+            </button>
+            <button className="button-secondary button-secondary-dark" onClick={exportCsv} type="button">
+              Export CSV
+            </button>
+          </div>
         </div>
-        <div className="toolbar-actions">
-          <button className="button-secondary" disabled={isMutating} onClick={() => void runAutofillBatch()} type="button">
-            {isMutating ? "Working..." : "Run autofill batch"}
-          </button>
-          <button className="button-secondary" onClick={exportCsv} type="button">
-            Export CSV
-          </button>
-        </div>
-      </div>
+      </section>
 
-      {message ? <p className="inline-message panel">{message}</p> : null}
+      {message ? <p className="inline-message inline-message-dark">{message}</p> : null}
+
+      <div className="mobile-view-switcher" role="tablist" aria-label="Workbench panels">
+        <button
+          className={clsx("mobile-view-button", mobilePanel === "queue" && "mobile-view-button-active")}
+          onClick={() => setMobilePanel("queue")}
+          type="button"
+        >
+          Queue
+        </button>
+        <button
+          className={clsx("mobile-view-button", mobilePanel === "answer" && "mobile-view-button-active")}
+          onClick={() => setMobilePanel("answer")}
+          type="button"
+        >
+          Answer
+        </button>
+        <button
+          className={clsx("mobile-view-button", mobilePanel === "evidence" && "mobile-view-button-active")}
+          onClick={() => setMobilePanel("evidence")}
+          type="button"
+        >
+          Evidence
+        </button>
+      </div>
 
       <div className="workbench-grid">
-        <section className="panel queue-panel" aria-label="Question queue">
-          <div className="panel-header">
+        <section
+          aria-label="Question queue"
+          className={clsx("glass-panel queue-panel", mobilePanel !== "queue" && "mobile-panel-hidden")}
+        >
+          <div className="panel-header panel-header-tight">
             <div>
               <h2>Queue</h2>
-              <p>Select a row, then approve and advance without losing evidence context.</p>
+              <p>Move linearly, keep weak rows obvious, and never lose track of which answers still need human attention.</p>
             </div>
           </div>
           <div className="queue-list">
@@ -248,71 +335,98 @@ export function QuestionnaireWorkbench(props: {
               <button
                 className={clsx("queue-row", index === selectedIndex && "queue-row-active")}
                 key={item.id}
-                onClick={() => setSelectedIndex(index)}
+                onClick={() => handleSelectIndex(index)}
                 type="button"
               >
                 <div className="queue-row-top">
                   <strong>Row {item.rowIndex + 1}</strong>
-                  {item.reviewStatus === "APPROVED" ? (
-                    <StatusChip tone="success">Approved</StatusChip>
-                  ) : item.reviewStatus === "NEEDS_REVIEW" ? (
-                    <StatusChip tone="warning">Needs review</StatusChip>
-                  ) : (
-                    <StatusChip tone="neutral">Draft</StatusChip>
-                  )}
+                  <StatusChip tone={getReviewTone(item.reviewStatus)}>{item.reviewStatus.replace("_", " ")}</StatusChip>
                 </div>
                 <p>{item.text}</p>
+                <div className="queue-row-footer">
+                  <small>{item.citations.length} citations</small>
+                  {item.reuseMatchType ? <small>Reuse {item.reuseMatchType}</small> : null}
+                  {item.notFoundReason ? <small>Evidence gap</small> : null}
+                </div>
               </button>
             ))}
           </div>
         </section>
 
-        <section className="panel answer-panel" aria-label="Answer editor">
-          <div className="panel-header">
+        <section
+          aria-label="Answer editor"
+          className={clsx("glass-panel answer-panel", mobilePanel !== "answer" && "mobile-panel-hidden")}
+        >
+          <div className="panel-header panel-header-tight">
             <div>
-              <h2>Answer</h2>
-              <p>Keep the answer faithful to cited evidence. Approvals feed the reuse library automatically.</p>
+              <h2>Answer canvas</h2>
+              <p>Write only what the current evidence can support. Approvals promote into the trusted reuse layer automatically.</p>
             </div>
-            {selectedItem.reuseMatchType ? <StatusChip tone="success">Reuse {selectedItem.reuseMatchType}</StatusChip> : null}
+            <div className="answer-panel-signals">
+              <StatusChip tone={getReviewTone(selectedItem.reviewStatus)}>{selectedItem.reviewStatus.replace("_", " ")}</StatusChip>
+              {selectedItem.reuseMatchType ? <StatusChip tone="success">Reuse {selectedItem.reuseMatchType}</StatusChip> : null}
+            </div>
           </div>
 
-          <div className="question-card">
+          <div className="question-card question-card-spotlight">
             <span className="eyebrow">Selected question</span>
             <p>{selectedItem.text}</p>
+          </div>
+
+          <div className="answer-meta-strip">
+            <div>
+              <span>Evidence status</span>
+              <strong>{selectedItem.citations.length > 0 ? "Citations attached" : "Needs citation support"}</strong>
+            </div>
+            <div>
+              <span>Draft status</span>
+              <strong>{selectedItem.answer?.trim() ? "Draft in progress" : "No answer yet"}</strong>
+            </div>
           </div>
 
           <label className="field-label" htmlFor="answer-editor">
             Draft answer
           </label>
-          <textarea
-            id="answer-editor"
-            onChange={(event) => setDraftAnswer(event.target.value)}
-            rows={12}
-            value={draftAnswer}
-          />
+          <textarea id="answer-editor" onChange={(event) => setDraftAnswer(event.target.value)} rows={12} value={draftAnswer} />
 
-          <div className="panel-actions">
+          <div className="panel-actions panel-actions-split">
             <button className="button-primary" disabled={isMutating} onClick={() => void submitReview("APPROVED")} type="button">
               Approve &amp; next
             </button>
-            <button className="button-secondary" disabled={isMutating} onClick={() => void submitReview("NEEDS_REVIEW")} type="button">
+            <button
+              className="button-secondary button-secondary-dark"
+              disabled={isMutating}
+              onClick={() => void submitReview("NEEDS_REVIEW")}
+              type="button"
+            >
               Mark needs review
             </button>
           </div>
         </section>
 
-        <aside className="panel evidence-panel" aria-label="Evidence drawer">
-          <div className="panel-header">
+        <aside
+          aria-label="Evidence drawer"
+          className={clsx("glass-panel evidence-panel", mobilePanel !== "evidence" && "mobile-panel-hidden")}
+        >
+          <div className="panel-header panel-header-tight">
             <div>
-              <h2>Evidence</h2>
-              <p>Citations stay adjacent to the answer so reviewers never have to guess why something was drafted.</p>
+              <h2>Evidence inspector</h2>
+              <p>Keep proof attached to the answer so reviewers never have to infer why something was drafted.</p>
             </div>
+            <StatusChip tone={selectedItem.citations.length > 0 ? "success" : "neutral"}>
+              {selectedItem.citations.length} citations
+            </StatusChip>
           </div>
 
           {selectedItem.citations.length === 0 ? (
-            <div className="empty-state-card">
-              <strong>No citations yet</strong>
-              <span>Run autofill or mark this row for manual review.</span>
+            <div className="empty-state-shell empty-state-shell-compact">
+              <div className="empty-state-art empty-state-art-small">
+                <Image alt="" aria-hidden="true" className="art-image" fill sizes="180px" src={brandArt.emptyCitations} />
+              </div>
+              <div className="empty-state-copy">
+                <strong>No citations yet</strong>
+                <span>Run autofill or mark this row for manual review until better source evidence exists.</span>
+              </div>
             </div>
           ) : (
             <div className="citation-list">

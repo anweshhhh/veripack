@@ -1,7 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { brandArt } from "@/lib/brand-art";
 
 export function QuestionnaireImportCard(props: { workspaceSlug: string }) {
   const router = useRouter();
@@ -45,33 +47,53 @@ export function QuestionnaireImportCard(props: { workspaceSlug: string }) {
   }
 
   return (
-    <form className="panel upload-panel" onSubmit={handleSubmit}>
-      <div className="panel-header">
-        <div>
-          <h2>Import questionnaire</h2>
-          <p>CSV-only in V3. Attestly preserves your original headers and row order.</p>
+    <form className="workflow-card workflow-upload-card" onSubmit={handleSubmit}>
+      <div className="workflow-card-copy">
+        <span className="eyebrow">Questionnaire intake</span>
+        <h2>Bring in the buyer file only when the proof base is ready.</h2>
+        <p>
+          CSV-only in V3. Attestly keeps the original row order and headers, then layers answer, citations, and review
+          status back into the export.
+        </p>
+        <div className="workflow-checklist">
+          <span>CSV import</span>
+          <span>Original headers preserved</span>
+          <span>Batch autofill ready</span>
         </div>
       </div>
 
-      <label className="upload-dropzone" htmlFor="questionnaire-file">
-        <span>{file ? file.name : "Choose a questionnaire CSV"}</span>
-        <small>The most likely question column is selected automatically during import.</small>
-      </label>
-      <input
-        id="questionnaire-file"
-        accept=".csv,text/csv"
-        className="sr-only"
-        onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-        type="file"
-      />
+      <div className="workflow-card-stage">
+        <div className="workflow-card-art">
+          <Image
+            alt=""
+            aria-hidden="true"
+            className="art-image"
+            fill
+            sizes="(max-width: 920px) 100vw, 34vw"
+            src={brandArt.questionnaireAccent}
+          />
+        </div>
+        <label className="upload-dropzone upload-dropzone-rich" htmlFor="questionnaire-file">
+          <span>{file ? file.name : "Choose the questionnaire CSV"}</span>
+          <small>The most likely question column is selected automatically so you can move straight into review.</small>
+        </label>
+        <input
+          id="questionnaire-file"
+          accept=".csv,text/csv"
+          className="sr-only"
+          onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+          type="file"
+        />
 
-      <div className="panel-actions">
-        <button className="button-primary" disabled={isSubmitting} type="submit">
-          {isSubmitting ? "Importing..." : "Import CSV"}
-        </button>
+        <div className="panel-actions workflow-card-actions">
+          <button className="button-primary" disabled={isSubmitting} type="submit">
+            {isSubmitting ? "Importing questionnaire..." : "Import questionnaire"}
+          </button>
+          <span className="subtle-inline-note">Rows stay intact so export feels native to the buyer file.</span>
+        </div>
+
+        {message ? <p className="inline-message inline-message-dark">{message}</p> : null}
       </div>
-
-      {message ? <p className="inline-message">{message}</p> : null}
     </form>
   );
 }

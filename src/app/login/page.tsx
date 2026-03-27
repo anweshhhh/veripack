@@ -1,7 +1,10 @@
 export const dynamic = "force-dynamic";
 
+import Image from "next/image";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { brandArt } from "@/lib/brand-art";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
 
 type LoginPageProps = {
@@ -34,19 +37,42 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const error = getQueryValue(searchParams?.error);
 
   return (
-    <main className="auth-shell">
+    <main className="auth-page">
       <section className="auth-stage">
-        <div className="auth-copy">
-          <span className="eyebrow">Sign in</span>
-          <h1>Start with your real evidence, not five different AI tabs.</h1>
-          <p>
-            Use a verified Google work identity. Your first sign-in bootstraps a private workspace with app-owned
-            RBAC and workspace isolation already enforced.
-          </p>
+        <div className="auth-visual-shell">
+          <div className="art-frame art-frame-auth">
+            <Image
+              alt=""
+              aria-hidden="true"
+              className="art-image"
+              fill
+              priority
+              sizes="(max-width: 920px) 100vw, 46vw"
+              src={brandArt.masterStyle}
+            />
+            <div className="floating-insight-card floating-insight-card-auth">
+              <span>Private workspace</span>
+              <strong>Verified sign-in opens a review environment built around evidence, not loose chat threads.</strong>
+            </div>
+          </div>
         </div>
+
         <div className="auth-card">
+          <Link className="auth-back-link" href="/">
+            Back to overview
+          </Link>
+          <span className="eyebrow">Sign in</span>
+          <h1>Enter the proof canvas with your real work identity.</h1>
+          <p className="auth-note">
+            Use a verified Google email. Your first sign-in bootstraps a private workspace with app-owned RBAC and
+            workspace isolation already enforced.
+          </p>
+          <div className="auth-bullet-list">
+            <span>Grounded answering with citations</span>
+            <span>Approved-answer reuse with stale-proof checks</span>
+            <span>Questionnaire-first flow built for fast export</span>
+          </div>
           <GoogleSignInButton callbackUrl={callbackUrl} />
-          <p className="auth-note">Google account email must be verified. The first user becomes the workspace owner.</p>
           {error ? (
             <p className="auth-error">
               Google sign-in could not start. If this keeps happening after redeploy, recheck the Google callback URI and

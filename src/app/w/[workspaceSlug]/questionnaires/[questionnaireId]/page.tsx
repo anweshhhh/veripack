@@ -32,7 +32,8 @@ export default async function QuestionnaireDetailPage({
           answer: item.answer,
           citations: item.citations,
           reviewStatus: item.reviewStatus,
-          reuseMatchType: item.reuseMatchType
+          reuseMatchType: item.reuseMatchType,
+          notFoundReason: item.notFoundReason
         }))
       }}
       workspaceSlug={params.workspaceSlug}

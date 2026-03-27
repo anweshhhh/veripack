@@ -22,9 +22,9 @@ Attestly V3 is the minimal questionnaire-first rebuild:
 
 1. Install dependencies: `npm install`
 2. Copy `.env.example` to `.env`
-3. Start Postgres with the `vector` extension available
-4. Apply schema: `npm run db:push` for local setup or `prisma migrate deploy` for managed environments
-5. Start the app: `npm run dev`
+3. Start the local Postgres + `pgvector` container: `npm run db:local:up`
+4. Apply schema: `npm run db:migrate:deploy`
+5. Start the app on port 3001: `npm run dev -- --port 3001`
 
 ## Required environment variables
 

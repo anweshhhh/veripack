@@ -11,6 +11,9 @@
     "test": "vitest run",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
+    "db:local:up": "docker compose up -d db",
+    "db:local:down": "docker compose down",
+    "db:local:logs": "docker compose logs -f db",
     "db:push": "prisma db push",
     "db:migrate:deploy": "prisma migrate deploy"
   },

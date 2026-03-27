@@ -1,0 +1,16 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: attestly-v3-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: attestly_v3
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+    volumes:
+      - attestly-v3-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  attestly-v3-postgres-data:

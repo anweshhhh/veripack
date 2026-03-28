@@ -26,7 +26,7 @@ export function AppShell(props: {
     <div className="app-shell">
       <header className="app-header">
         <div className="app-header-inner">
-          <Link className="brand-link" href={`/w/${props.workspaceSlug}`}>
+          <Link className="brand-link brand-link-app" href={`/w/${props.workspaceSlug}`}>
             <span className="brand-mark">A</span>
             <span className="brand-copy">
               <strong>Attestly</strong>

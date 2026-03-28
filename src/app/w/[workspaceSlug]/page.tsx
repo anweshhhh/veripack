@@ -33,7 +33,11 @@ function resolveHomeState(params: {
       ctaHref: `/w/${params.workspaceSlug}/evidence`,
       ctaLabel: "Upload evidence",
       secondaryHref: `/w/${params.workspaceSlug}/questionnaires`,
-      secondaryLabel: "See questionnaires"
+      secondaryLabel: "See questionnaires",
+      kicker: "First step",
+      spotlightLabel: "Current stage",
+      spotlightValue: "Build the source library",
+      spotlightNote: "Only ready evidence should drive autofill."
     };
   }
 
@@ -44,7 +48,11 @@ function resolveHomeState(params: {
       ctaHref: `/w/${params.workspaceSlug}/questionnaires`,
       ctaLabel: "Import questionnaire",
       secondaryHref: `/w/${params.workspaceSlug}/evidence`,
-      secondaryLabel: "Review evidence"
+      secondaryLabel: "Review evidence",
+      kicker: "Next step",
+      spotlightLabel: "Current stage",
+      spotlightValue: "Bring in one buyer file",
+      spotlightNote: "Your evidence base is ready for the next handoff."
     };
   }
 
@@ -55,7 +63,11 @@ function resolveHomeState(params: {
       ctaHref: `/w/${params.workspaceSlug}/questionnaires/${params.latestQuestionnaire.id}`,
       ctaLabel: "Continue review",
       secondaryHref: `/w/${params.workspaceSlug}/questionnaires`,
-      secondaryLabel: "All questionnaires"
+      secondaryLabel: "All questionnaires",
+      kicker: "In progress",
+      spotlightLabel: "Current stage",
+      spotlightValue: "Review in motion",
+      spotlightNote: "Stay focused on the next answer that needs a decision."
     };
   }
 
@@ -66,7 +78,11 @@ function resolveHomeState(params: {
       ctaHref: `/w/${params.workspaceSlug}/questionnaires/${params.latestQuestionnaire.id}`,
       ctaLabel: "Open export view",
       secondaryHref: `/w/${params.workspaceSlug}/questionnaires`,
-      secondaryLabel: "All questionnaires"
+      secondaryLabel: "All questionnaires",
+      kicker: "Ready to finish",
+      spotlightLabel: "Current stage",
+      spotlightValue: "Export the final file",
+      spotlightNote: "The latest questionnaire is fully approved and ready to leave the app."
     };
   }
 
@@ -76,7 +92,11 @@ function resolveHomeState(params: {
     ctaHref: `/w/${params.workspaceSlug}/questionnaires`,
     ctaLabel: "Go to questionnaires",
     secondaryHref: `/w/${params.workspaceSlug}/evidence`,
-    secondaryLabel: "Go to evidence"
+    secondaryLabel: "Go to evidence",
+    kicker: "Workspace",
+    spotlightLabel: "Current stage",
+    spotlightValue: "Choose the next action",
+    spotlightNote: "Keep moving without opening every page."
   };
 }
 
@@ -171,10 +191,10 @@ export default async function WorkspaceHomePage({ params }: { params: { workspac
   });
 
   return (
-    <div className="page-stack">
-      <section className="hero-card">
-        <div className="hero-card-main">
-          <span className="eyebrow">Workspace</span>
+    <div className="page-stack home-stack">
+      <section className="home-stage-card">
+        <div className="home-stage-main">
+          <span className="eyebrow">{homeState.kicker}</span>
           <h1>{homeState.title}</h1>
           <p>{homeState.description}</p>
           <div className="hero-actions">
@@ -187,25 +207,31 @@ export default async function WorkspaceHomePage({ params }: { params: { workspac
           </div>
         </div>
 
-        <div className="hero-card-aside">
-          <div className="mini-summary">
+        <div className="home-stage-side">
+          <article className="home-side-card home-side-card-primary">
+            <span>{homeState.spotlightLabel}</span>
+            <strong>{homeState.spotlightValue}</strong>
+            <small>{homeState.spotlightNote}</small>
+          </article>
+          <article className="home-side-card">
             <span>Workspace health</span>
             <strong>{readyEvidenceCount}/{Math.max(evidenceCount, 1)} evidence ready</strong>
             <small>{questionnaireCount} questionnaire{questionnaireCount === 1 ? "" : "s"} active</small>
-          </div>
+          </article>
         </div>
       </section>
 
-      <section className="step-row" aria-label="Onboarding progress">
+      <section className="home-flow-row" aria-label="Onboarding progress">
         {[
-          { number: "01", label: "Evidence" },
-          { number: "02", label: "Questionnaire" },
-          { number: "03", label: "Review" },
-          { number: "04", label: "Export" }
+          { number: "01", label: "Evidence", description: "Build the source library." },
+          { number: "02", label: "Questionnaire", description: "Import one buyer CSV." },
+          { number: "03", label: "Review", description: "Approve or flag each row." },
+          { number: "04", label: "Export", description: "Download the final file." }
         ].map((step, index) => (
-          <article className={`step-tile step-tile-${stepStatuses[index]}`} key={step.number}>
+          <article className={`flow-card flow-card-${stepStatuses[index]}`} key={step.number}>
             <span>{step.number}</span>
             <strong>{step.label}</strong>
+            <p>{step.description}</p>
             <small>
               {stepStatuses[index] === "done" ? "Done" : stepStatuses[index] === "current" ? "Current" : "Later"}
             </small>
@@ -213,39 +239,48 @@ export default async function WorkspaceHomePage({ params }: { params: { workspac
         ))}
       </section>
 
-      {latestQuestionnaire ? (
-        <section className="compact-panel">
-          <div>
+      <section className="home-secondary-grid">
+        {latestQuestionnaire ? (
+          <section className="home-focus-card">
             <span className="panel-kicker">Latest questionnaire</span>
             <h2>{latestQuestionnaire.name}</h2>
             <p>
               {latestQuestionnaire.approvedCount}/{latestQuestionnaire.totalCount} approved
               {latestQuestionnaire.needsReviewCount > 0 ? ` • ${latestQuestionnaire.needsReviewCount} need review` : ""}
             </p>
-          </div>
-          <Link className="button-secondary" href={`/w/${params.workspaceSlug}/questionnaires/${latestQuestionnaire.id}`}>
-            Open
-          </Link>
-        </section>
-      ) : null}
+            <Link className="button-secondary" href={`/w/${params.workspaceSlug}/questionnaires/${latestQuestionnaire.id}`}>
+              Open
+            </Link>
+          </section>
+        ) : (
+          <section className="home-focus-card">
+            <span className="panel-kicker">Next up</span>
+            <h2>Start with one clean file.</h2>
+            <p>Attestly works best when the next action is obvious. Build the evidence library first, then bring in one buyer questionnaire.</p>
+            <Link className="button-secondary" href={homeState.ctaHref}>
+              {homeState.ctaLabel}
+            </Link>
+          </section>
+        )}
 
-      <details className="details-panel">
-        <summary>Workspace details</summary>
-        <div className="details-grid">
-          <div>
-            <span>Evidence files</span>
-            <strong>{evidenceCount}</strong>
+        <details className="details-panel">
+          <summary>Workspace details</summary>
+          <div className="details-grid">
+            <div>
+              <span>Evidence files</span>
+              <strong>{evidenceCount}</strong>
+            </div>
+            <div>
+              <span>Approved answers</span>
+              <strong>{approvedAnswersCount}</strong>
+            </div>
+            <div>
+              <span>Exports</span>
+              <strong>{exportCount}</strong>
+            </div>
           </div>
-          <div>
-            <span>Approved answers</span>
-            <strong>{approvedAnswersCount}</strong>
-          </div>
-          <div>
-            <span>Exports</span>
-            <strong>{exportCount}</strong>
-          </div>
-        </div>
-      </details>
+        </details>
+      </section>
     </div>
   );
 }

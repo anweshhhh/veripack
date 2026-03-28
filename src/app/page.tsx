@@ -9,7 +9,7 @@ export default async function LandingPage() {
   const primaryLabel = currentUser ? "Open workspace" : "Start with Google";
 
   return (
-    <main className="site-shell">
+    <main className="site-shell site-shell-landing">
       <header className="site-header">
         <div className="site-header-inner">
           <Link className="brand-link" href="/">
@@ -31,91 +31,115 @@ export default async function LandingPage() {
         </div>
       </header>
 
-      <section className="landing-hero">
-        <div className="landing-copy">
-          <span className="eyebrow">Minimal questionnaire core</span>
-          <h1>Questionnaire automation that feels calm, clear, and grounded.</h1>
-          <p>
-            Upload evidence, import one buyer file, review the suggested answers, and export with citations still in
-            view.
-          </p>
-          <div className="hero-actions">
-            <Link className="button-primary" href={primaryHref}>
-              {primaryLabel}
-            </Link>
-            <a className="button-secondary" href="#how-it-works">
-              See how it works
-            </a>
-          </div>
-        </div>
+      <section className="landing-stage">
+        <div className="landing-grid">
+          <div className="landing-copy">
+            <span className="eyebrow">Minimal questionnaire core</span>
+            <h1>Security questionnaires with less noise and more proof.</h1>
+            <p>
+              Attestly keeps the flow simple: upload trusted evidence, import one buyer file, review grounded drafts,
+              and export with confidence.
+            </p>
+            <div className="hero-actions">
+              <Link className="button-primary" href={primaryHref}>
+                {primaryLabel}
+              </Link>
+              <a className="button-secondary" href="#how-it-works">
+                See product flow
+              </a>
+            </div>
 
-        <div className="landing-preview">
-          <div className="preview-card">
-            <div className="preview-card-header">
-              <span className="preview-dot preview-dot-active" />
-              <span className="preview-label">Current workflow</span>
+            <div className="landing-signal-row">
+              <span className="signal-pill">Grounded answers</span>
+              <span className="signal-pill">Approved reuse</span>
+              <span className="signal-pill">Scoped workspaces</span>
             </div>
-            <div className="preview-step preview-step-done">
-              <span>1</span>
-              <div>
-                <strong>Evidence uploaded</strong>
-                <small>Source documents are ready for retrieval.</small>
+          </div>
+
+          <div className="landing-scene">
+            <div className="scene-shell">
+              <div className="scene-topbar">
+                <span className="scene-kicker">Questionnaire in review</span>
+                <span className="scene-counter">2 of 5 approved</span>
               </div>
-            </div>
-            <div className="preview-step preview-step-active">
-              <span>2</span>
-              <div>
-                <strong>Questionnaire in review</strong>
-                <small>The next action is obvious and kept in one place.</small>
+
+              <div className="scene-focus-card">
+                <div className="scene-focus-copy">
+                  <span className="scene-label">Current row</span>
+                  <strong>Do you perform periodic access reviews?</strong>
+                  <p>Yes. Quarterly access reviews are tracked and remediation is followed through to completion.</p>
+                </div>
+
+                <div className="scene-proof-card">
+                  <span className="scene-label">Evidence</span>
+                  <strong>Security Policy 2026.md</strong>
+                  <p>Access reviews are performed quarterly for production systems and tracked by the security team.</p>
+                </div>
               </div>
-            </div>
-            <div className="preview-answer">
-              <div className="preview-answer-top">
-                <strong>Suggested answer</strong>
-                <span className="mini-status">1 citation</span>
+
+              <div className="scene-grid">
+                <article className="scene-mini-card scene-mini-card-positive">
+                  <span>Evidence</span>
+                  <strong>3 files ready</strong>
+                  <small>Autofill is grounded in approved source material.</small>
+                </article>
+                <article className="scene-mini-card">
+                  <span>Review</span>
+                  <strong>One clear next action</strong>
+                  <small>Approve or mark for review without losing context.</small>
+                </article>
+                <article className="scene-mini-card">
+                  <span>Export</span>
+                  <strong>Original CSV preserved</strong>
+                  <small>Attestly adds answers, citations, and status cleanly.</small>
+                </article>
               </div>
-              <p>Yes. MFA is required for administrative access and systems handling customer data.</p>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="landing-steps" id="how-it-works">
-        <article className="simple-card">
+      <section className="landing-story" id="how-it-works">
+        <article className="story-card">
           <span className="step-number">01</span>
-          <strong>Upload evidence</strong>
-          <p>Only the source material you trust should drive autofill.</p>
+          <strong>Add the source of truth</strong>
+          <p>Start with policies, procedures, and documents you actually trust.</p>
         </article>
-        <article className="simple-card">
+        <article className="story-card story-card-highlight">
           <span className="step-number">02</span>
-          <strong>Review answers</strong>
-          <p>Each row gets a draft, a status, and proof beside it.</p>
+          <strong>Review the grounded draft</strong>
+          <p>Move row by row with citations close by and a clear primary action.</p>
         </article>
-        <article className="simple-card">
+        <article className="story-card">
           <span className="step-number">03</span>
-          <strong>Export results</strong>
-          <p>Keep the buyer file structure and append Attestly output cleanly.</p>
+          <strong>Export the finished file</strong>
+          <p>Preserve the original structure and append Attestly output cleanly.</p>
         </article>
       </section>
 
-      <section className="landing-band" id="why-attestly">
-        <div>
+      <section className="landing-foundation" id="why-attestly">
+        <div className="foundation-main">
           <span className="eyebrow">What stays true</span>
-          <h2>V1 principles, much cleaner product.</h2>
+          <h2>Keep the V1 rigor. Lose the V1 friction.</h2>
+          <p>
+            The engine principles stay intact: grounded answers, citations, approved-answer reuse, RBAC, and workspace
+            isolation.
+          </p>
         </div>
-        <div className="band-grid">
-          <div>
+
+        <div className="foundation-grid">
+          <article className="foundation-card">
             <strong>Grounded answers</strong>
-            <p>No supported answer should exist without evidence.</p>
-          </div>
-          <div>
+            <p>Supported answers stay tied to evidence instead of floating as AI output.</p>
+          </article>
+          <article className="foundation-card">
             <strong>Approved reuse</strong>
-            <p>Only reviewed answers become reusable memory.</p>
-          </div>
-          <div>
+            <p>Only reviewed answers become reusable memory for future questionnaires.</p>
+          </article>
+          <article className="foundation-card">
             <strong>Scoped workspaces</strong>
-            <p>RBAC and org isolation remain part of the foundation.</p>
-          </div>
+            <p>RBAC and org isolation remain part of the product foundation from day one.</p>
+          </article>
         </div>
       </section>
     </main>

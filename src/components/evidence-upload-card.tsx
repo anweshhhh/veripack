@@ -1,9 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { brandArt } from "@/lib/brand-art";
 
 export function EvidenceUploadCard(props: { workspaceSlug: string }) {
   const router = useRouter();
@@ -37,7 +35,7 @@ export function EvidenceUploadCard(props: { workspaceSlug: string }) {
       }
 
       setFile(null);
-      setMessage("Evidence uploaded and processed.");
+      setMessage("Evidence uploaded.");
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Upload failed.");
@@ -47,46 +45,38 @@ export function EvidenceUploadCard(props: { workspaceSlug: string }) {
   }
 
   return (
-    <form className="workflow-card workflow-upload-card" onSubmit={handleSubmit}>
-      <div className="workflow-card-copy">
-        <span className="eyebrow">Evidence ingestion</span>
-        <h2>Build the proof set before the first draft lands.</h2>
-        <p>
-          Keep the evidence library tight. Every uploaded file becomes the material Attestly can cite back during
-          autofill and review.
-        </p>
-        <div className="workflow-checklist">
-          <span>PDF, TXT, or Markdown</span>
-          <span>10 MB max</span>
-          <span>Chunked and embedded automatically</span>
+    <form className="task-card" onSubmit={handleSubmit}>
+      <div className="task-card-copy">
+        <span className="panel-kicker">Step 1</span>
+        <h2>Upload evidence</h2>
+        <p>Use the source documents you want cited back during autofill.</p>
+        <div className="tag-row">
+          <span className="tag">PDF</span>
+          <span className="tag">TXT</span>
+          <span className="tag">Markdown</span>
+          <span className="tag">10 MB max</span>
         </div>
       </div>
 
-      <div className="workflow-card-stage">
-        <div className="workflow-card-art">
-          <Image alt="" aria-hidden="true" className="art-image" fill sizes="(max-width: 920px) 100vw, 34vw" src={brandArt.evidenceAccent} />
-        </div>
-        <label className="upload-dropzone upload-dropzone-rich" htmlFor="evidence-file">
-          <span>{file ? file.name : "Choose a citation-ready source file"}</span>
-          <small>Drop in a real policy, IR plan, or source note. The app will parse, chunk, and prepare it for retrieval.</small>
-        </label>
-        <input
-          id="evidence-file"
-          accept=".pdf,.txt,.md,text/plain,text/markdown,application/pdf"
-          className="sr-only"
-          onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-          type="file"
-        />
+      <label className="dropzone" htmlFor="evidence-file">
+        <span>{file ? file.name : "Choose a source file"}</span>
+        <small>Drag and drop works too.</small>
+      </label>
+      <input
+        id="evidence-file"
+        accept=".pdf,.txt,.md,text/plain,text/markdown,application/pdf"
+        className="sr-only"
+        onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+        type="file"
+      />
 
-        <div className="panel-actions workflow-card-actions">
-          <button className="button-primary" disabled={isSubmitting} type="submit">
-            {isSubmitting ? "Processing evidence..." : "Upload evidence"}
-          </button>
-          <span className="subtle-inline-note">Private to this workspace and processed in place.</span>
-        </div>
-
-        {message ? <p className="inline-message inline-message-dark">{message}</p> : null}
+      <div className="task-card-actions">
+        <button className="button-primary" disabled={isSubmitting} type="submit">
+          {isSubmitting ? "Uploading..." : "Upload evidence"}
+        </button>
       </div>
+
+      {message ? <p className="inline-message">{message}</p> : null}
     </form>
   );
 }

@@ -1,237 +1,251 @@
 export const dynamic = "force-dynamic";
 
-import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { brandArt } from "@/lib/brand-art";
 import { requirePageWorkspaceAccess } from "@/lib/auth";
 
-type NextMove = {
-  title: string;
-  description: string;
-  href: string;
-  label: string;
-};
+type StepStatus = "done" | "current" | "upcoming";
 
-function resolveNextMove(params: {
+function resolveHomeState(params: {
   workspaceSlug: string;
   evidenceCount: number;
   readyEvidenceCount: number;
   questionnaireCount: number;
-  latestQuestionnaireId: string | null;
-}) : NextMove {
+  latestQuestionnaire:
+    | {
+        id: string;
+        name: string;
+        totalCount: number;
+        approvedCount: number;
+        needsReviewCount: number;
+      }
+    | null;
+}) {
+  const questionnaireReady =
+    params.latestQuestionnaire && params.latestQuestionnaire.totalCount > 0
+      ? params.latestQuestionnaire.approvedCount >= params.latestQuestionnaire.totalCount
+      : false;
+
   if (params.evidenceCount === 0) {
     return {
-      title: "Start with evidence",
-      description: "Seed the workspace with the source material you want cited back in every strong answer.",
-      href: `/w/${params.workspaceSlug}/evidence`,
-      label: "Upload evidence"
+      title: "Upload your first evidence file",
+      description: "Start with the source material you want cited back during autofill.",
+      ctaHref: `/w/${params.workspaceSlug}/evidence`,
+      ctaLabel: "Upload evidence",
+      secondaryHref: `/w/${params.workspaceSlug}/questionnaires`,
+      secondaryLabel: "See questionnaires"
     };
   }
 
   if (params.questionnaireCount === 0) {
     return {
-      title: "Import the first buyer file",
-      description: "Your evidence base is live. Bring in a CSV and let the review loop start.",
-      href: `/w/${params.workspaceSlug}/questionnaires`,
-      label: "Import questionnaire"
+      title: "Import your first questionnaire",
+      description: "Your source library exists. Bring in a buyer CSV and start the review workflow.",
+      ctaHref: `/w/${params.workspaceSlug}/questionnaires`,
+      ctaLabel: "Import questionnaire",
+      secondaryHref: `/w/${params.workspaceSlug}/evidence`,
+      secondaryLabel: "Review evidence"
     };
   }
 
-  if (params.readyEvidenceCount < params.evidenceCount) {
+  if (!questionnaireReady && params.latestQuestionnaire) {
     return {
-      title: "Tighten the evidence library",
-      description: "One or more documents still need attention before the workspace is fully citation-ready.",
-      href: `/w/${params.workspaceSlug}/evidence`,
-      label: "Review evidence"
+      title: "Continue the review workflow",
+      description: "The next step is to approve the answers that are ready and flag the ones that need attention.",
+      ctaHref: `/w/${params.workspaceSlug}/questionnaires/${params.latestQuestionnaire.id}`,
+      ctaLabel: "Continue review",
+      secondaryHref: `/w/${params.workspaceSlug}/questionnaires`,
+      secondaryLabel: "All questionnaires"
+    };
+  }
+
+  if (params.latestQuestionnaire) {
+    return {
+      title: "Export the completed file",
+      description: "Your latest questionnaire is fully approved. Export the results when you are ready.",
+      ctaHref: `/w/${params.workspaceSlug}/questionnaires/${params.latestQuestionnaire.id}`,
+      ctaLabel: "Open export view",
+      secondaryHref: `/w/${params.workspaceSlug}/questionnaires`,
+      secondaryLabel: "All questionnaires"
     };
   }
 
   return {
-    title: "Return to the live review queue",
-    description: "The source set is ready. Move back into the workbench and push approved answers forward.",
-    href: params.latestQuestionnaireId
-      ? `/w/${params.workspaceSlug}/questionnaires/${params.latestQuestionnaireId}`
-      : `/w/${params.workspaceSlug}/questionnaires`,
-    label: "Open workbench"
+    title: "Open your workspace",
+    description: "Everything is set up. Pick the next action and keep the workflow moving.",
+    ctaHref: `/w/${params.workspaceSlug}/questionnaires`,
+    ctaLabel: "Go to questionnaires",
+    secondaryHref: `/w/${params.workspaceSlug}/evidence`,
+    secondaryLabel: "Go to evidence"
   };
+}
+
+function buildStepStatuses(params: {
+  evidenceCount: number;
+  questionnaireCount: number;
+  latestQuestionnaire:
+    | {
+        totalCount: number;
+        approvedCount: number;
+      }
+    | null;
+}) {
+  const reviewDone =
+    params.latestQuestionnaire && params.latestQuestionnaire.totalCount > 0
+      ? params.latestQuestionnaire.approvedCount >= params.latestQuestionnaire.totalCount
+      : false;
+
+  const hasQuestionnaire = params.questionnaireCount > 0;
+  const hasEvidence = params.evidenceCount > 0;
+
+  const stepOne: StepStatus = hasEvidence ? "done" : "current";
+  const stepTwo: StepStatus = hasQuestionnaire ? "done" : hasEvidence ? "current" : "upcoming";
+  const stepThree: StepStatus = hasQuestionnaire ? (reviewDone ? "done" : "current") : "upcoming";
+  const stepFour: StepStatus = reviewDone ? "current" : "upcoming";
+
+  return [stepOne, stepTwo, stepThree, stepFour];
 }
 
 export default async function WorkspaceHomePage({ params }: { params: { workspaceSlug: string } }) {
   const access = await requirePageWorkspaceAccess(params.workspaceSlug, "VIEW_HOME");
 
-  const [evidenceCount, readyEvidenceCount, questionnaireCount, approvedAnswersCount, latestQuestionnaire] = await Promise.all([
-    prisma.evidenceDocument.count({
-      where: {
-        workspaceId: access.workspace.id
-      }
-    }),
-    prisma.evidenceDocument.count({
-      where: {
-        workspaceId: access.workspace.id,
-        status: "READY"
-      }
-    }),
-    prisma.questionnaire.count({
-      where: {
-        workspaceId: access.workspace.id
-      }
-    }),
-    prisma.approvedAnswer.count({
-      where: {
-        workspaceId: access.workspace.id
-      }
-    }),
-    prisma.questionnaire.findFirst({
-      where: {
-        workspaceId: access.workspace.id
-      },
-      orderBy: {
-        updatedAt: "desc"
-      },
-      select: {
-        id: true,
-        name: true,
-        totalCount: true,
-        approvedCount: true,
-        needsReviewCount: true
-      }
-    })
-  ]);
+  const [evidenceCount, readyEvidenceCount, questionnaireCount, approvedAnswersCount, latestQuestionnaire, exportCount] =
+    await Promise.all([
+      prisma.evidenceDocument.count({
+        where: {
+          workspaceId: access.workspace.id
+        }
+      }),
+      prisma.evidenceDocument.count({
+        where: {
+          workspaceId: access.workspace.id,
+          status: "READY"
+        }
+      }),
+      prisma.questionnaire.count({
+        where: {
+          workspaceId: access.workspace.id
+        }
+      }),
+      prisma.approvedAnswer.count({
+        where: {
+          workspaceId: access.workspace.id
+        }
+      }),
+      prisma.questionnaire.findFirst({
+        where: {
+          workspaceId: access.workspace.id
+        },
+        orderBy: {
+          updatedAt: "desc"
+        },
+        select: {
+          id: true,
+          name: true,
+          totalCount: true,
+          approvedCount: true,
+          needsReviewCount: true
+        }
+      }),
+      prisma.exportRecord.count({
+        where: {
+          questionnaire: {
+            workspaceId: access.workspace.id
+          }
+        }
+      })
+    ]);
 
-  const nextMove = resolveNextMove({
+  const homeState = resolveHomeState({
     workspaceSlug: params.workspaceSlug,
     evidenceCount,
     readyEvidenceCount,
     questionnaireCount,
-    latestQuestionnaireId: latestQuestionnaire?.id ?? null
+    latestQuestionnaire
+  });
+
+  const stepStatuses = buildStepStatuses({
+    evidenceCount,
+    questionnaireCount,
+    latestQuestionnaire
   });
 
   return (
-    <div className="workspace-home">
-      <section className="workspace-stage">
-        <div className="workspace-stage-copy">
-          <span className="eyebrow">Workspace control center</span>
-          <h1>Move the team from evidence to export without losing the proof line.</h1>
-          <p>
-            This workspace is narrowed to the operations that matter: source ingestion, questionnaire intake, review,
-            approval, and export.
-          </p>
+    <div className="page-stack">
+      <section className="hero-card">
+        <div className="hero-card-main">
+          <span className="eyebrow">Workspace</span>
+          <h1>{homeState.title}</h1>
+          <p>{homeState.description}</p>
           <div className="hero-actions">
-            <Link className="button-primary" href={nextMove.href}>
-              {nextMove.label}
+            <Link className="button-primary" href={homeState.ctaHref}>
+              {homeState.ctaLabel}
             </Link>
-            <Link className="button-secondary button-secondary-dark" href={`/w/${params.workspaceSlug}/questionnaires`}>
-              Open review queue
+            <Link className="button-secondary" href={homeState.secondaryHref}>
+              {homeState.secondaryLabel}
             </Link>
           </div>
         </div>
 
-        <div className="workspace-stage-visual">
-          <div className="art-frame art-frame-workspace">
-            <Image
-              alt=""
-              aria-hidden="true"
-              className="art-image"
-              fill
-              priority
-              sizes="(max-width: 920px) 100vw, 40vw"
-              src={brandArt.workspaceBanner}
-            />
-            <div className="stage-overlay-card">
-              <span>Recommended next move</span>
-              <strong>{nextMove.title}</strong>
-              <p>{nextMove.description}</p>
-            </div>
+        <div className="hero-card-aside">
+          <div className="mini-summary">
+            <span>Workspace health</span>
+            <strong>{readyEvidenceCount}/{Math.max(evidenceCount, 1)} evidence ready</strong>
+            <small>{questionnaireCount} questionnaire{questionnaireCount === 1 ? "" : "s"} active</small>
           </div>
         </div>
       </section>
 
-      <section className="signal-grid">
-        <article className="signal-card">
-          <span>Evidence ready</span>
-          <strong>
-            {readyEvidenceCount}/{evidenceCount || 1}
-          </strong>
-          <p>{evidenceCount === 0 ? "No documents uploaded yet." : `${readyEvidenceCount} documents are citation-ready.`}</p>
-        </article>
-        <article className="signal-card">
-          <span>Questionnaires live</span>
-          <strong>{questionnaireCount}</strong>
-          <p>{questionnaireCount === 0 ? "No buyer files imported yet." : "Active files are ready for batch autofill and review."}</p>
-        </article>
-        <article className="signal-card">
-          <span>Approved memory</span>
-          <strong>{approvedAnswersCount}</strong>
-          <p>Reviewed answers promoted with evidence snapshots and reuse safeguards.</p>
-        </article>
+      <section className="step-row" aria-label="Onboarding progress">
+        {[
+          { number: "01", label: "Evidence" },
+          { number: "02", label: "Questionnaire" },
+          { number: "03", label: "Review" },
+          { number: "04", label: "Export" }
+        ].map((step, index) => (
+          <article className={`step-tile step-tile-${stepStatuses[index]}`} key={step.number}>
+            <span>{step.number}</span>
+            <strong>{step.label}</strong>
+            <small>
+              {stepStatuses[index] === "done" ? "Done" : stepStatuses[index] === "current" ? "Current" : "Later"}
+            </small>
+          </article>
+        ))}
       </section>
 
-      <section className="command-grid">
-        <article className="command-panel">
-          <span className="eyebrow">Operational pulse</span>
-          <h2>What deserves attention now</h2>
-          <div className="command-panel-list">
-            <div>
-              <strong>{evidenceCount === 0 ? "No source library yet" : `${evidenceCount - readyEvidenceCount} documents need attention`}</strong>
-              <p>Keep the evidence set small, current, and processed before the team leans on it.</p>
-            </div>
-            <div>
-              <strong>{questionnaireCount === 0 ? "No active questionnaires" : `${questionnaireCount} questionnaire${questionnaireCount > 1 ? "s" : ""} active`}</strong>
-              <p>Batch autofill only works well when the evidence set is already in good shape.</p>
-            </div>
-            <div>
-              <strong>{approvedAnswersCount === 0 ? "Reuse library is empty" : `${approvedAnswersCount} approved answers live`}</strong>
-              <p>Every approval compounds future speed, as long as the proof stays fresh.</p>
-            </div>
+      {latestQuestionnaire ? (
+        <section className="compact-panel">
+          <div>
+            <span className="panel-kicker">Latest questionnaire</span>
+            <h2>{latestQuestionnaire.name}</h2>
+            <p>
+              {latestQuestionnaire.approvedCount}/{latestQuestionnaire.totalCount} approved
+              {latestQuestionnaire.needsReviewCount > 0 ? ` • ${latestQuestionnaire.needsReviewCount} need review` : ""}
+            </p>
           </div>
-        </article>
+          <Link className="button-secondary" href={`/w/${params.workspaceSlug}/questionnaires/${latestQuestionnaire.id}`}>
+            Open
+          </Link>
+        </section>
+      ) : null}
 
-        <article className="command-panel command-panel-highlight">
-          <span className="eyebrow">Live file</span>
-          {latestQuestionnaire ? (
-            <>
-              <h2>{latestQuestionnaire.name}</h2>
-              <p>
-                {latestQuestionnaire.approvedCount}/{latestQuestionnaire.totalCount} approved with{" "}
-                {latestQuestionnaire.needsReviewCount} still needing review.
-              </p>
-              <Link className="button-secondary button-secondary-dark" href={`/w/${params.workspaceSlug}/questionnaires/${latestQuestionnaire.id}`}>
-                Resume workbench
-              </Link>
-            </>
-          ) : (
-            <>
-              <h2>Nothing is in review yet.</h2>
-              <p>Once a questionnaire lands, this card becomes the quickest route back into the active review stream.</p>
-              <Link className="button-secondary button-secondary-dark" href={`/w/${params.workspaceSlug}/questionnaires`}>
-                Go to questionnaires
-              </Link>
-            </>
-          )}
-        </article>
-      </section>
-
-      <section className="journey-panel">
-        <div className="journey-panel-copy">
-          <span className="eyebrow">Proof loop</span>
-          <h2>The product now behaves like a review instrument, not a scattered checklist of features.</h2>
+      <details className="details-panel">
+        <summary>Workspace details</summary>
+        <div className="details-grid">
+          <div>
+            <span>Evidence files</span>
+            <strong>{evidenceCount}</strong>
+          </div>
+          <div>
+            <span>Approved answers</span>
+            <strong>{approvedAnswersCount}</strong>
+          </div>
+          <div>
+            <span>Exports</span>
+            <strong>{exportCount}</strong>
+          </div>
         </div>
-        <div className="journey-steps">
-          <article>
-            <strong>Evidence first</strong>
-            <p>Ingest the real documents you want the model to quote back when answers need to stand up.</p>
-          </article>
-          <article>
-            <strong>Questionnaire next</strong>
-            <p>Import one buyer file, run autofill in controlled batches, and keep weak rows obvious.</p>
-          </article>
-          <article>
-            <strong>Approve into reuse</strong>
-            <p>Promote only reviewed answers so the memory layer compounds quality instead of noise.</p>
-          </article>
-        </div>
-      </section>
+      </details>
     </div>
   );
 }

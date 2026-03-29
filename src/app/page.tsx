@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { Inter } from "next/font/google";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUserSafe } from "@/lib/auth";
 
 const landingFont = Inter({
   subsets: ["latin"],
@@ -10,7 +10,7 @@ const landingFont = Inter({
 });
 
 export default async function LandingPage() {
-  const currentUser = await getCurrentUser();
+  const currentUser = await getCurrentUserSafe();
   const primaryHref = currentUser ? `/w/${currentUser.access.workspace.slug}` : "/login";
   const primaryLabel = currentUser ? "Open workspace" : "Start with Google";
 

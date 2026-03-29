@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUserSafe } from "@/lib/auth";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
 
 type LoginPageProps = {
@@ -26,7 +26,7 @@ function getQueryValue(value: string | string[] | undefined): string | null {
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const currentUser = await getCurrentUser();
+  const currentUser = await getCurrentUserSafe();
   if (currentUser) {
     redirect(`/w/${currentUser.access.workspace.slug}`);
   }

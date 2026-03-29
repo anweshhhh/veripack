@@ -25,6 +25,14 @@ export async function getCurrentUser() {
   };
 }
 
+export async function getCurrentUserSafe() {
+  try {
+    return await getCurrentUser();
+  } catch {
+    return null;
+  }
+}
+
 export async function requireCurrentUser() {
   const currentUser = await getCurrentUser();
   if (!currentUser) {

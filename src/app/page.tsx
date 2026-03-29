@@ -1,11 +1,11 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { Inter } from "next/font/google";
+import { Manrope } from "next/font/google";
 import { getCurrentUserSafe } from "@/lib/auth";
 import { LandingProductCanvas } from "@/components/landing-product-canvas";
 
-const landingFont = Inter({
+const landingFont = Manrope({
   subsets: ["latin"],
   display: "swap"
 });
@@ -21,7 +21,8 @@ export default async function LandingPage() {
         <div className="landing-minimal-header-inner">
           <Link className="landing-minimal-brand" href="/">
             <span aria-hidden="true" className="landing-minimal-brand-mark">
-              A
+              <span />
+              <span />
             </span>
             <span className="landing-minimal-brand-text">Attestly</span>
           </Link>
@@ -45,7 +46,7 @@ export default async function LandingPage() {
             <br />
             With Proof
           </h1>
-          <p>Grounded questionnaire workflows for security teams.</p>
+          <p>Grounded security questionnaire workflows, built to stay calm from upload to export.</p>
           <div className="landing-minimal-actions">
             <Link className="landing-minimal-primary" href={primaryHref}>
               {primaryLabel}
@@ -58,14 +59,22 @@ export default async function LandingPage() {
 
         <LandingProductCanvas />
 
-        <section className="landing-minimal-note" id="why-attestly">
-          <p>Grounded answers. Approved reuse. Scoped workspaces. Clean export.</p>
+        <section className="landing-minimal-values" id="why-attestly">
+          <span className="landing-minimal-values-kicker">Why Attestly</span>
+
+          <div className="landing-minimal-values-grid">
+            <p>Grounded answers</p>
+            <p>Approved reuse</p>
+            <p>Scoped workspaces</p>
+            <p>Clean export</p>
+          </div>
         </section>
 
         <div className="landing-minimal-proof-strip" id="proof-strip">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div className="landing-minimal-proof-slot" key={index}>
-              [proof / logo]
+            <div aria-hidden="true" className="landing-minimal-proof-slot" key={index}>
+              <span className="landing-minimal-proof-mark" />
+              <span className="landing-minimal-proof-bar" />
             </div>
           ))}
         </div>

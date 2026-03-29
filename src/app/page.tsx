@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { Inter } from "next/font/google";
 import { getCurrentUserSafe } from "@/lib/auth";
+import { LandingProductCanvas } from "@/components/landing-product-canvas";
 
 const landingFont = Inter({
   subsets: ["latin"],
@@ -27,8 +28,8 @@ export default async function LandingPage() {
 
           <nav aria-label="Marketing" className="landing-minimal-nav">
             <a href="#product">Product</a>
-            <a href="#proof-strip">Docs</a>
-            <a href="#why-attestly">Company</a>
+            <span aria-disabled="true">Docs</span>
+            <span aria-disabled="true">Company</span>
           </nav>
 
           <Link className="landing-minimal-login" href="/login">
@@ -37,7 +38,7 @@ export default async function LandingPage() {
         </div>
       </header>
 
-      <section className="landing-minimal-stage" id="product">
+      <section className="landing-minimal-stage">
         <div className="landing-minimal-hero">
           <h1>
             Answer Questionnaires
@@ -55,6 +56,12 @@ export default async function LandingPage() {
           </div>
         </div>
 
+        <LandingProductCanvas />
+
+        <section className="landing-minimal-note" id="why-attestly">
+          <p>Grounded answers. Approved reuse. Scoped workspaces. Clean export.</p>
+        </section>
+
         <div className="landing-minimal-proof-strip" id="proof-strip">
           {Array.from({ length: 4 }).map((_, index) => (
             <div className="landing-minimal-proof-slot" key={index}>
@@ -62,10 +69,6 @@ export default async function LandingPage() {
             </div>
           ))}
         </div>
-      </section>
-
-      <section className="landing-minimal-note" id="why-attestly">
-        <p>Grounded answers. Approved reuse. Scoped workspaces. Clean export.</p>
       </section>
     </main>
   );

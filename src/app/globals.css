@@ -1140,3 +1140,281 @@ input::placeholder {
     min-height: 38px;
   }
 }
+
+.landing-minimal {
+  min-height: 100vh;
+  background: #f7f7f8;
+  color: #151518;
+  display: flex;
+  flex-direction: column;
+}
+
+.landing-minimal-header {
+  padding: 18px 0 0;
+}
+
+.landing-minimal-header-inner,
+.landing-minimal-hero,
+.landing-minimal-proof-strip,
+.landing-minimal-note {
+  width: min(1180px, calc(100vw - 80px));
+  margin: 0 auto;
+}
+
+.landing-minimal-header-inner {
+  min-height: 56px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+
+.landing-minimal-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  justify-self: start;
+}
+
+.landing-minimal-brand-mark {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1.5px solid #151518;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.landing-minimal-brand-text {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.landing-minimal-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 34px;
+  justify-self: center;
+}
+
+.landing-minimal-nav a,
+.landing-minimal-login {
+  color: #6f7582;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.landing-minimal-nav a:hover,
+.landing-minimal-login:hover {
+  color: #151518;
+}
+
+.landing-minimal-login {
+  justify-self: end;
+}
+
+.landing-minimal-stage {
+  flex: 1;
+  display: grid;
+  align-content: space-between;
+  gap: 72px;
+  padding: 42px 0 52px;
+}
+
+.landing-minimal-hero {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 24px;
+  padding-top: 44px;
+}
+
+.landing-minimal-hero h1 {
+  margin: 0;
+  max-width: 980px;
+  font-size: clamp(4.4rem, 9vw, 8.6rem);
+  font-weight: 500;
+  letter-spacing: -0.09em;
+  line-height: 0.93;
+}
+
+.landing-minimal-hero p {
+  margin: 0;
+  max-width: 520px;
+  color: #7d8391;
+  font-size: 1rem;
+  line-height: 1.5;
+  letter-spacing: -0.02em;
+}
+
+.landing-minimal-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 30px;
+  margin-top: 8px;
+}
+
+.landing-minimal-primary,
+.landing-minimal-secondary {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.96rem;
+  letter-spacing: -0.02em;
+}
+
+.landing-minimal-primary {
+  padding: 0 22px;
+  border-radius: 999px;
+  background: #151518;
+  color: #f7f7f8;
+  font-weight: 600;
+}
+
+.landing-minimal-primary:hover {
+  background: #303036;
+}
+
+.landing-minimal-secondary {
+  color: #151518;
+  font-weight: 500;
+}
+
+.landing-minimal-proof-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 28px;
+  align-items: center;
+}
+
+.landing-minimal-proof-slot {
+  min-height: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  color: #8fa7c7;
+  background: transparent;
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.landing-minimal-note {
+  padding: 0 0 52px;
+}
+
+.landing-minimal-note p {
+  margin: 0;
+  text-align: center;
+  color: #7d8391;
+  font-size: 0.92rem;
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 960px) {
+  .landing-minimal-header-inner,
+  .landing-minimal-hero,
+  .landing-minimal-proof-strip,
+  .landing-minimal-note {
+    width: min(calc(100vw - 40px), 1180px);
+  }
+
+  .landing-minimal-header-inner {
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+  }
+
+  .landing-minimal-nav {
+    display: none;
+  }
+
+  .landing-minimal-stage {
+    gap: 56px;
+    padding-top: 24px;
+  }
+
+  .landing-minimal-hero {
+    justify-items: start;
+    text-align: left;
+    padding-top: 24px;
+  }
+
+  .landing-minimal-hero h1 {
+    max-width: 720px;
+    font-size: clamp(3.7rem, 11vw, 6rem);
+  }
+
+  .landing-minimal-hero p {
+    max-width: 440px;
+  }
+
+  .landing-minimal-proof-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+}
+
+@media (max-width: 640px) {
+  .landing-minimal-header {
+    padding-top: 14px;
+  }
+
+  .landing-minimal-header-inner,
+  .landing-minimal-hero,
+  .landing-minimal-proof-strip,
+  .landing-minimal-note {
+    width: min(calc(100vw - 28px), 1180px);
+  }
+
+  .landing-minimal-stage {
+    gap: 44px;
+    padding-bottom: 36px;
+  }
+
+  .landing-minimal-brand-text {
+    display: none;
+  }
+
+  .landing-minimal-login {
+    font-size: 0.9rem;
+  }
+
+  .landing-minimal-hero {
+    gap: 18px;
+  }
+
+  .landing-minimal-hero h1 {
+    font-size: 3.15rem;
+    line-height: 0.94;
+  }
+
+  .landing-minimal-hero p {
+    font-size: 0.96rem;
+  }
+
+  .landing-minimal-actions {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .landing-minimal-primary {
+    width: 100%;
+  }
+
+  .landing-minimal-proof-strip {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .landing-minimal-proof-slot {
+    justify-content: flex-start;
+    min-height: 44px;
+    padding: 0 2px;
+  }
+}

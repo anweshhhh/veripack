@@ -197,20 +197,17 @@ export default async function WorkspaceHomePage({ params }: { params: { workspac
       <div className="page-stack home-activation-stack">
         <section className="home-activation-hero">
           <span className="home-activation-kicker">Workspace ready</span>
-          <h1>Start with trusted source material.</h1>
-          <p>Upload a few source files first. Everything else stays quiet until it becomes useful.</p>
+          <h1>Start with source material.</h1>
+          <p>Upload the files you trust. The rest of the workflow stays quiet until it becomes relevant.</p>
 
           <div className="home-activation-actions">
             <Link className="button-primary" href={`/w/${params.workspaceSlug}/evidence`}>
               Upload evidence
             </Link>
-            <a className="home-activation-link" href="#activation-stage">
-              See workflow
-            </a>
           </div>
         </section>
 
-        <section className="home-activation-stage-block" id="activation-stage">
+        <section className="home-activation-stage-block">
           <div className="home-activation-rail" aria-label="Workflow steps">
             {[
               { number: "01", label: "Source", state: "active" },
@@ -298,7 +295,7 @@ export default async function WorkspaceHomePage({ params }: { params: { workspac
             <div className="home-activation-status">
               <span className="home-activation-status-kicker">Current step</span>
               <strong>Source is the only thing in motion right now.</strong>
-              <p>Upload PDF, TXT, or MD files to unlock the next handoff.</p>
+              <p>Upload PDF, TXT, or MD files to unlock the next step.</p>
             </div>
           </div>
         </section>

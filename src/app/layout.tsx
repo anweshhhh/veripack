@@ -1,16 +1,10 @@
 import type { Metadata } from "next";
-import { Fraunces, Space_Grotesk } from "next/font/google";
+import { Manrope } from "next/font/google";
 import "@/app/globals.css";
 
-const uiFont = Space_Grotesk({
+const uiFont = Manrope({
   subsets: ["latin"],
   variable: "--font-ui",
-  display: "swap"
-});
-
-const accentFont = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-accent",
   display: "swap"
 });
 
@@ -21,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${uiFont.variable} ${accentFont.variable}`}>
+    <html lang="en" className={uiFont.variable}>
       <body>{children}</body>
     </html>
   );

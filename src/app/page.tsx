@@ -1,14 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { Manrope } from "next/font/google";
 import { getCurrentUserSafe } from "@/lib/auth";
 import { LandingProductCanvas } from "@/components/landing-product-canvas";
-
-const landingFont = Manrope({
-  subsets: ["latin"],
-  display: "swap"
-});
 
 export default async function LandingPage() {
   const currentUser = await getCurrentUserSafe();
@@ -16,7 +10,7 @@ export default async function LandingPage() {
   const primaryLabel = currentUser ? "Open workspace" : "Start with Google";
 
   return (
-    <main className={`${landingFont.className} landing-minimal`}>
+    <main className="landing-minimal">
       <header className="landing-minimal-header">
         <div className="landing-minimal-header-inner">
           <Link className="landing-minimal-brand" href="/">

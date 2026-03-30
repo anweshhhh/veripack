@@ -190,6 +190,159 @@ export default async function WorkspaceHomePage({ params }: { params: { workspac
     latestQuestionnaire
   });
 
+  const isFirstRun = evidenceCount === 0 && questionnaireCount === 0 && !latestQuestionnaire;
+
+  if (isFirstRun) {
+    return (
+      <div className="page-stack home-onboarding-stack">
+        <section className="home-onboarding-hero">
+          <div className="home-onboarding-copy">
+            <span className="home-onboarding-kicker">Workspace ready</span>
+            <h1>Start with the documents you trust.</h1>
+            <p>Upload a few source files first. Attestly will ground every answer against them before anything is exported.</p>
+
+            <div className="hero-actions">
+              <Link className="button-primary" href={`/w/${params.workspaceSlug}/evidence`}>
+                Upload evidence
+              </Link>
+              <a className="home-onboarding-secondary" href="#first-run-flow">
+                See workflow
+              </a>
+            </div>
+
+            <div className="home-onboarding-support">
+              <span>PDF, TXT, and MD supported</span>
+              <span>Private workspace by default</span>
+            </div>
+          </div>
+
+          <div className="home-onboarding-stage">
+            <div className="home-onboarding-stage-glow home-onboarding-stage-glow-a" />
+            <div className="home-onboarding-stage-glow home-onboarding-stage-glow-b" />
+            <div className="home-onboarding-stage-grid" />
+
+            <div className="home-onboarding-stage-track">
+              <span className="home-onboarding-stage-line" />
+              <span className="home-onboarding-stage-line-fill" />
+              <span className="home-onboarding-stage-stop home-onboarding-stage-stop-active" />
+              <span className="home-onboarding-stage-stop" />
+              <span className="home-onboarding-stage-stop" />
+              <span className="home-onboarding-stage-stop" />
+            </div>
+
+            <article className="home-onboarding-module home-onboarding-module-source">
+              <span className="home-onboarding-module-label">Source</span>
+
+              <div className="home-onboarding-source-field">
+                <div className="home-onboarding-upload-chip">
+                  <span />
+                </div>
+
+                <div className="home-onboarding-doc home-onboarding-doc-a" />
+                <div className="home-onboarding-doc home-onboarding-doc-b" />
+                <div className="home-onboarding-doc home-onboarding-doc-c" />
+              </div>
+            </article>
+
+            <div className="home-onboarding-connector home-onboarding-connector-a" />
+            <div className="home-onboarding-connector home-onboarding-connector-b" />
+            <div className="home-onboarding-connector home-onboarding-connector-c" />
+
+            <article className="home-onboarding-module home-onboarding-module-evidence">
+              <span className="home-onboarding-module-label">Evidence</span>
+
+              <div className="home-onboarding-evidence-core">
+                <div className="home-onboarding-evidence-ring home-onboarding-evidence-ring-a" />
+                <div className="home-onboarding-evidence-ring home-onboarding-evidence-ring-b" />
+                <div className="home-onboarding-evidence-link home-onboarding-evidence-link-a" />
+                <div className="home-onboarding-evidence-link home-onboarding-evidence-link-b" />
+                <div className="home-onboarding-evidence-link home-onboarding-evidence-link-c" />
+                <div className="home-onboarding-evidence-node home-onboarding-evidence-node-a" />
+                <div className="home-onboarding-evidence-node home-onboarding-evidence-node-b" />
+                <div className="home-onboarding-evidence-node home-onboarding-evidence-node-c" />
+                <div className="home-onboarding-evidence-node home-onboarding-evidence-node-d" />
+              </div>
+            </article>
+
+            <article className="home-onboarding-module home-onboarding-module-questionnaire">
+              <span className="home-onboarding-module-label">Questionnaire</span>
+
+              <div className="home-onboarding-questionnaire-field">
+                <div className="home-onboarding-questionnaire-head" />
+                <div className="home-onboarding-questionnaire-row home-onboarding-questionnaire-row-a" />
+                <div className="home-onboarding-questionnaire-row home-onboarding-questionnaire-row-b" />
+                <div className="home-onboarding-questionnaire-row home-onboarding-questionnaire-row-c" />
+              </div>
+            </article>
+
+            <article className="home-onboarding-module home-onboarding-module-proof">
+              <span className="home-onboarding-module-label">Proof</span>
+
+              <div className="home-onboarding-proof-field">
+                <div className="home-onboarding-proof-line home-onboarding-proof-line-strong" />
+                <div className="home-onboarding-proof-line home-onboarding-proof-line-mid" />
+                <div className="home-onboarding-proof-line home-onboarding-proof-line-short" />
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section className="home-onboarding-flow" id="first-run-flow">
+          <div className="home-onboarding-flow-head">
+            <span className="panel-kicker">How it flows</span>
+            <h2>One obvious step now. The rest appears when you need it.</h2>
+          </div>
+
+          <div className="home-onboarding-flow-grid" aria-label="First-run workflow">
+            {[
+              {
+                number: "01",
+                title: "Upload evidence",
+                description: "Start with the policies, reports, or source docs you want cited later.",
+                state: "active"
+              },
+              {
+                number: "02",
+                title: "Import questionnaire",
+                description: "Bring in one buyer CSV once your source library is ready.",
+                state: "upcoming"
+              },
+              {
+                number: "03",
+                title: "Review answers",
+                description: "Approve what is grounded and hold anything that needs attention.",
+                state: "upcoming"
+              },
+              {
+                number: "04",
+                title: "Export cleanly",
+                description: "Download the final file once the review loop is complete.",
+                state: "upcoming"
+              }
+            ].map((step) => (
+              <article className={`home-onboarding-flow-card home-onboarding-flow-card-${step.state}`} key={step.number}>
+                <span>{step.number}</span>
+                <strong>{step.title}</strong>
+                <p>{step.description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="home-onboarding-note">
+          <div>
+            <span className="panel-kicker">Calm by design</span>
+            <p>This page will keep simplifying itself as you move forward. Right now, all you need is a source library.</p>
+          </div>
+
+          <Link className="button-secondary" href={`/w/${params.workspaceSlug}/evidence`}>
+            Go to evidence
+          </Link>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="page-stack home-stack">
       <section className="home-stage-card">

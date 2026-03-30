@@ -27,7 +27,10 @@ export function AppShell(props: {
       <header className="app-header">
         <div className="app-header-inner">
           <Link className="brand-link brand-link-app" href={`/w/${props.workspaceSlug}`}>
-            <span className="brand-mark">A</span>
+            <span aria-hidden="true" className="brand-mark brand-mark-dual">
+              <span />
+              <span />
+            </span>
             <span className="brand-copy">
               <strong>Attestly</strong>
               <span>{props.workspaceName}</span>
@@ -47,7 +50,7 @@ export function AppShell(props: {
           </nav>
 
           <div className="app-header-actions">
-            <span className="workspace-pill">{props.workspaceName}</span>
+            <span className="workspace-pill">Workspace</span>
             <SignOutButton />
           </div>
         </div>

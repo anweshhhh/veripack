@@ -194,151 +194,118 @@ export default async function WorkspaceHomePage({ params }: { params: { workspac
 
   if (isFirstRun) {
     return (
-      <div className="page-stack home-onboarding-stack">
-        <section className="home-onboarding-hero">
-          <div className="home-onboarding-copy">
-            <span className="home-onboarding-kicker">Workspace ready</span>
-            <h1>Start with the documents you trust.</h1>
-            <p>Upload a few source files first. Attestly will ground every answer against them before anything is exported.</p>
+      <div className="page-stack home-activation-stack">
+        <section className="home-activation-hero">
+          <span className="home-activation-kicker">Workspace ready</span>
+          <h1>Start with trusted source material.</h1>
+          <p>Upload a few source files first. Everything else stays quiet until it becomes useful.</p>
 
-            <div className="hero-actions">
-              <Link className="button-primary" href={`/w/${params.workspaceSlug}/evidence`}>
-                Upload evidence
-              </Link>
-              <a className="home-onboarding-secondary" href="#first-run-flow">
-                See workflow
-              </a>
-            </div>
+          <div className="home-activation-actions">
+            <Link className="button-primary" href={`/w/${params.workspaceSlug}/evidence`}>
+              Upload evidence
+            </Link>
+            <a className="home-activation-link" href="#activation-stage">
+              See workflow
+            </a>
+          </div>
+        </section>
 
-            <div className="home-onboarding-support">
-              <span>PDF, TXT, and MD supported</span>
-              <span>Private workspace by default</span>
-            </div>
+        <section className="home-activation-stage-block" id="activation-stage">
+          <div className="home-activation-rail" aria-label="Workflow steps">
+            {[
+              { number: "01", label: "Source", state: "active" },
+              { number: "02", label: "Questionnaire", state: "quiet" },
+              { number: "03", label: "Review", state: "quiet" },
+              { number: "04", label: "Export", state: "quiet" }
+            ].map((step) => (
+              <div className={`home-activation-rail-step home-activation-rail-step-${step.state}`} key={step.number}>
+                <span>{step.number}</span>
+                <strong>{step.label}</strong>
+              </div>
+            ))}
           </div>
 
-          <div className="home-onboarding-stage">
-            <div className="home-onboarding-stage-glow home-onboarding-stage-glow-a" />
-            <div className="home-onboarding-stage-glow home-onboarding-stage-glow-b" />
-            <div className="home-onboarding-stage-grid" />
+          <div className="home-activation-stage">
+            <div className="home-activation-stage-glow home-activation-stage-glow-a" />
+            <div className="home-activation-stage-glow home-activation-stage-glow-b" />
+            <div className="home-activation-stage-grid" />
 
-            <div className="home-onboarding-stage-track">
-              <span className="home-onboarding-stage-line" />
-              <span className="home-onboarding-stage-line-fill" />
-              <span className="home-onboarding-stage-stop home-onboarding-stage-stop-active" />
-              <span className="home-onboarding-stage-stop" />
-              <span className="home-onboarding-stage-stop" />
-              <span className="home-onboarding-stage-stop" />
+            <div className="home-activation-stage-track">
+              <span className="home-activation-stage-line" />
+              <span className="home-activation-stage-line-fill" />
+              <span className="home-activation-stage-stop home-activation-stage-stop-active" />
+              <span className="home-activation-stage-stop" />
+              <span className="home-activation-stage-stop" />
+              <span className="home-activation-stage-stop" />
             </div>
 
-            <article className="home-onboarding-module home-onboarding-module-source">
-              <span className="home-onboarding-module-label">Source</span>
+            <article className="home-activation-module home-activation-module-source">
+              <span className="home-activation-module-label">Source</span>
 
-              <div className="home-onboarding-source-field">
-                <div className="home-onboarding-upload-chip">
+              <div className="home-activation-source-field">
+                <div className="home-activation-upload-signal">
                   <span />
                 </div>
 
-                <div className="home-onboarding-doc home-onboarding-doc-a" />
-                <div className="home-onboarding-doc home-onboarding-doc-b" />
-                <div className="home-onboarding-doc home-onboarding-doc-c" />
+                <div className="home-activation-doc home-activation-doc-a" />
+                <div className="home-activation-doc home-activation-doc-b" />
+                <div className="home-activation-doc home-activation-doc-c" />
               </div>
             </article>
 
-            <div className="home-onboarding-connector home-onboarding-connector-a" />
-            <div className="home-onboarding-connector home-onboarding-connector-b" />
-            <div className="home-onboarding-connector home-onboarding-connector-c" />
+            <div className="home-activation-connector home-activation-connector-a" />
+            <div className="home-activation-connector home-activation-connector-b" />
+            <div className="home-activation-connector home-activation-connector-c" />
 
-            <article className="home-onboarding-module home-onboarding-module-evidence">
-              <span className="home-onboarding-module-label">Evidence</span>
+            <article className="home-activation-module home-activation-module-evidence">
+              <span className="home-activation-module-label">Evidence</span>
 
-              <div className="home-onboarding-evidence-core">
-                <div className="home-onboarding-evidence-ring home-onboarding-evidence-ring-a" />
-                <div className="home-onboarding-evidence-ring home-onboarding-evidence-ring-b" />
-                <div className="home-onboarding-evidence-link home-onboarding-evidence-link-a" />
-                <div className="home-onboarding-evidence-link home-onboarding-evidence-link-b" />
-                <div className="home-onboarding-evidence-link home-onboarding-evidence-link-c" />
-                <div className="home-onboarding-evidence-node home-onboarding-evidence-node-a" />
-                <div className="home-onboarding-evidence-node home-onboarding-evidence-node-b" />
-                <div className="home-onboarding-evidence-node home-onboarding-evidence-node-c" />
-                <div className="home-onboarding-evidence-node home-onboarding-evidence-node-d" />
+              <div className="home-activation-evidence-core">
+                <div className="home-activation-evidence-ring home-activation-evidence-ring-a" />
+                <div className="home-activation-evidence-ring home-activation-evidence-ring-b" />
+                <div className="home-activation-evidence-link home-activation-evidence-link-a" />
+                <div className="home-activation-evidence-link home-activation-evidence-link-b" />
+                <div className="home-activation-evidence-link home-activation-evidence-link-c" />
+                <div className="home-activation-evidence-node home-activation-evidence-node-a" />
+                <div className="home-activation-evidence-node home-activation-evidence-node-b home-activation-evidence-node-hot" />
+                <div className="home-activation-evidence-node home-activation-evidence-node-c" />
+                <div className="home-activation-evidence-node home-activation-evidence-node-d" />
               </div>
             </article>
 
-            <article className="home-onboarding-module home-onboarding-module-questionnaire">
-              <span className="home-onboarding-module-label">Questionnaire</span>
+            <article className="home-activation-module home-activation-module-questionnaire">
+              <span className="home-activation-module-label">Questionnaire</span>
 
-              <div className="home-onboarding-questionnaire-field">
-                <div className="home-onboarding-questionnaire-head" />
-                <div className="home-onboarding-questionnaire-row home-onboarding-questionnaire-row-a" />
-                <div className="home-onboarding-questionnaire-row home-onboarding-questionnaire-row-b" />
-                <div className="home-onboarding-questionnaire-row home-onboarding-questionnaire-row-c" />
+              <div className="home-activation-questionnaire-field">
+                <div className="home-activation-questionnaire-head" />
+                <div className="home-activation-questionnaire-row home-activation-questionnaire-row-a" />
+                <div className="home-activation-questionnaire-row home-activation-questionnaire-row-b" />
+                <div className="home-activation-questionnaire-row home-activation-questionnaire-row-c" />
               </div>
             </article>
 
-            <article className="home-onboarding-module home-onboarding-module-proof">
-              <span className="home-onboarding-module-label">Proof</span>
+            <article className="home-activation-module home-activation-module-proof">
+              <span className="home-activation-module-label">Proof</span>
 
-              <div className="home-onboarding-proof-field">
-                <div className="home-onboarding-proof-line home-onboarding-proof-line-strong" />
-                <div className="home-onboarding-proof-line home-onboarding-proof-line-mid" />
-                <div className="home-onboarding-proof-line home-onboarding-proof-line-short" />
+              <div className="home-activation-proof-field">
+                <div className="home-activation-proof-chip">1 citation</div>
+                <div className="home-activation-proof-line home-activation-proof-line-strong" />
+                <div className="home-activation-proof-line home-activation-proof-line-mid" />
+                <div className="home-activation-proof-line home-activation-proof-line-short" />
               </div>
             </article>
+
+            <div className="home-activation-status">
+              <span className="home-activation-status-kicker">Current step</span>
+              <strong>Source is the only thing in motion right now.</strong>
+              <p>Upload PDF, TXT, or MD files to unlock the next handoff.</p>
+            </div>
           </div>
         </section>
 
-        <section className="home-onboarding-flow" id="first-run-flow">
-          <div className="home-onboarding-flow-head">
-            <span className="panel-kicker">How it flows</span>
-            <h2>One obvious step now. The rest appears when you need it.</h2>
-          </div>
-
-          <div className="home-onboarding-flow-grid" aria-label="First-run workflow">
-            {[
-              {
-                number: "01",
-                title: "Upload evidence",
-                description: "Start with the policies, reports, or source docs you want cited later.",
-                state: "active"
-              },
-              {
-                number: "02",
-                title: "Import questionnaire",
-                description: "Bring in one buyer CSV once your source library is ready.",
-                state: "upcoming"
-              },
-              {
-                number: "03",
-                title: "Review answers",
-                description: "Approve what is grounded and hold anything that needs attention.",
-                state: "upcoming"
-              },
-              {
-                number: "04",
-                title: "Export cleanly",
-                description: "Download the final file once the review loop is complete.",
-                state: "upcoming"
-              }
-            ].map((step) => (
-              <article className={`home-onboarding-flow-card home-onboarding-flow-card-${step.state}`} key={step.number}>
-                <span>{step.number}</span>
-                <strong>{step.title}</strong>
-                <p>{step.description}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="home-onboarding-note">
-          <div>
-            <span className="panel-kicker">Calm by design</span>
-            <p>This page will keep simplifying itself as you move forward. Right now, all you need is a source library.</p>
-          </div>
-
-          <Link className="button-secondary" href={`/w/${params.workspaceSlug}/evidence`}>
-            Go to evidence
-          </Link>
-        </section>
+        <p className="home-activation-footnote">
+          PDF, TXT, and MD supported. Private workspace boundaries stay intact from the first upload onward.
+        </p>
       </div>
     );
   }

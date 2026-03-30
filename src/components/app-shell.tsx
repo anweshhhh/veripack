@@ -50,7 +50,6 @@ export function AppShell(props: {
           </nav>
 
           <div className="app-header-actions">
-            <span className="workspace-pill">Workspace</span>
             <SignOutButton />
           </div>
         </div>

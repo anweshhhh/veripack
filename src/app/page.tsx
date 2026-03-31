@@ -1,8 +1,16 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
+import { Sora } from "next/font/google";
 import { getCurrentUserSafe } from "@/lib/auth";
 import { LandingProductCanvas } from "@/components/landing-product-canvas";
+import { SmoothScrollLink } from "@/components/smooth-scroll-link";
+
+const landingFont = Sora({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap"
+});
 
 export default async function LandingPage() {
   const currentUser = await getCurrentUserSafe();
@@ -10,7 +18,7 @@ export default async function LandingPage() {
   const primaryLabel = currentUser ? "Open workspace" : "Start with Google";
 
   return (
-    <main className="landing-minimal">
+    <main className={`${landingFont.className} landing-minimal`}>
       <header className="landing-minimal-header">
         <div className="landing-minimal-header-inner">
           <Link className="landing-minimal-brand" href="/">
@@ -22,7 +30,7 @@ export default async function LandingPage() {
           </Link>
 
           <nav aria-label="Marketing" className="landing-minimal-nav">
-            <a href="#product">Product</a>
+            <SmoothScrollLink href="#product">Product</SmoothScrollLink>
             <span aria-disabled="true">Docs</span>
             <span aria-disabled="true">Company</span>
           </nav>
@@ -34,44 +42,32 @@ export default async function LandingPage() {
       </header>
 
       <section className="landing-minimal-stage">
-        <div className="landing-minimal-hero">
+        <section className="landing-minimal-hero">
           <h1>
             Answer Questionnaires
             <br />
             With Proof
           </h1>
-          <p>Grounded security questionnaire workflows, built to stay calm from upload to export.</p>
+          <p>Grounded drafts. Visible citations. Clean export.</p>
           <div className="landing-minimal-actions">
             <Link className="landing-minimal-primary" href={primaryHref}>
               {primaryLabel}
             </Link>
-            <a className="landing-minimal-secondary" href="#why-attestly">
-              Why Attestly
-            </a>
+            <SmoothScrollLink className="landing-minimal-secondary" href="#product">
+              See product
+            </SmoothScrollLink>
           </div>
-        </div>
+        </section>
 
         <LandingProductCanvas />
 
         <section className="landing-minimal-values" id="why-attestly">
-          <span className="landing-minimal-values-kicker">Why Attestly</span>
-
           <div className="landing-minimal-values-grid">
-            <p>Grounded answers</p>
-            <p>Approved reuse</p>
-            <p>Scoped workspaces</p>
-            <p>Clean export</p>
+            <p>Grounded by source</p>
+            <p>Approved once, reused safely</p>
+            <p>Scoped to one workspace</p>
           </div>
         </section>
-
-        <div className="landing-minimal-proof-strip" id="proof-strip">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div aria-hidden="true" className="landing-minimal-proof-slot" key={index}>
-              <span className="landing-minimal-proof-mark" />
-              <span className="landing-minimal-proof-bar" />
-            </div>
-          ))}
-        </div>
       </section>
     </main>
   );

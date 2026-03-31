@@ -14,26 +14,26 @@ const PRODUCT_STEPS: ProductStep[] = [
   {
     id: "documents",
     label: "Documents",
-    title: "Start with the source of truth",
-    caption: "Upload the security documents you already trust before Attestly drafts anything."
+    title: "Start with trusted source files",
+    caption: "Bring in the policies and documents your team already relies on."
   },
   {
     id: "evidence",
     label: "Evidence",
-    title: "Turn documents into retrievable evidence",
-    caption: "The source set becomes grounded evidence blocks that stay tied to where they came from."
+    title: "Make the source set retrievable",
+    caption: "Attestly keeps every draft tied back to the material it came from."
   },
   {
     id: "questionnaire",
     label: "Questionnaire",
     title: "Bring in the buyer file",
-    caption: "A buyer questionnaire enters the same system so each row can pull from the right evidence."
+    caption: "Each question lines up against the right evidence without losing context."
   },
   {
     id: "proof",
     label: "Proof",
-    title: "Review answers with proof attached",
-    caption: "Drafts resolve into answer cards with citations, ready for approval and clean export."
+    title: "Approve with proof attached",
+    caption: "Drafts resolve into cited answers that are ready to review and send."
   }
 ];
 

@@ -17,7 +17,7 @@ export const BlobStorageBackend = {
 type RuntimeEnv = NodeJS.ProcessEnv;
 type BlobStorageBackend = (typeof BlobStorageBackend)[keyof typeof BlobStorageBackend];
 
-const DEFAULT_DEV_AUTH_SECRET = "dev-attestly-v3-auth-secret";
+const DEFAULT_DEV_AUTH_SECRET = "dev-veripack-auth-secret";
 
 function isProductionRuntime(env: RuntimeEnv) {
   return env.NODE_ENV === "production";

@@ -10,7 +10,7 @@ const uiFont = Sora({
 });
 
 export const metadata: Metadata = {
-  title: "Attestly V3",
+  title: "Veripack",
   description: "Evidence-first security questionnaire autofill with citations, review, and export."
 };
 

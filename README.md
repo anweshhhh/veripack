@@ -1,6 +1,6 @@
-# Attestly V3
+# Veripack
 
-Attestly V3 is the minimal questionnaire-first rebuild:
+Veripack is the deployment and repository name for the minimal questionnaire-first rebuild:
 
 - Google sign-in and workspace bootstrap
 - evidence upload and parsing for PDF, TXT, and Markdown

@@ -17,7 +17,7 @@ export default async function WorkspaceLayout({
   }
 
   return (
-    <AppShell workspaceName={access.workspace.name} workspaceSlug={params.workspaceSlug}>
+    <AppShell workspaceSlug={params.workspaceSlug}>
       {children}
     </AppShell>
   );

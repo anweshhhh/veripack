@@ -1,10 +1,31 @@
 export const dynamic = "force-dynamic";
 
-import Link from "next/link";
+import { DocumentStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requirePageWorkspaceAccess } from "@/lib/auth";
+import {
+  WorkspaceHomeStage,
+  type WorkspaceHomeNextAction,
+  type WorkspaceHomeMode,
+  type WorkspaceHomeStepStatus,
+  type WorkspaceHomeInsightState
+} from "@/components/workspace-home-stage";
 
-type StepStatus = "done" | "current" | "upcoming";
+type CitationLike = {
+  docName: string;
+};
+
+function parseCitationDocNames(value: Prisma.JsonValue): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((entry): entry is CitationLike => {
+      return typeof entry === "object" && entry !== null && typeof (entry as CitationLike).docName === "string";
+    })
+    .map((entry) => entry.docName);
+}
 
 function resolveHomeState(params: {
   workspaceSlug: string;
@@ -28,75 +49,65 @@ function resolveHomeState(params: {
 
   if (params.evidenceCount === 0) {
     return {
-      title: "Upload your first evidence file",
-      description: "Start with the source material you want cited back during autofill.",
-      ctaHref: `/w/${params.workspaceSlug}/evidence`,
-      ctaLabel: "Upload evidence",
-      secondaryHref: `/w/${params.workspaceSlug}/questionnaires`,
-      secondaryLabel: "See questionnaires",
-      kicker: "First step",
-      spotlightLabel: "Current stage",
-      spotlightValue: "Build the source library",
-      spotlightNote: "Only ready evidence should drive autofill."
+      mode: "empty" as WorkspaceHomeMode,
+      title: "Build the source library.",
+      description: "Add the first file you want cited back.",
+      kicker: "Workspace ready",
+      ctaHref: undefined,
+      ctaLabel: undefined,
+      secondaryHref: undefined,
+      secondaryLabel: undefined
     };
   }
 
   if (params.questionnaireCount === 0) {
     return {
-      title: "Import your first questionnaire",
-      description: "Your source library exists. Bring in a buyer CSV and start the review workflow.",
+      mode: "questionnaire" as WorkspaceHomeMode,
+      title: "Bring in one buyer file.",
+      description: "Your evidence set is ready for the first questionnaire.",
       ctaHref: `/w/${params.workspaceSlug}/questionnaires`,
       ctaLabel: "Import questionnaire",
       secondaryHref: `/w/${params.workspaceSlug}/evidence`,
-      secondaryLabel: "Review evidence",
-      kicker: "Next step",
-      spotlightLabel: "Current stage",
-      spotlightValue: "Bring in one buyer file",
-      spotlightNote: "Your evidence base is ready for the next handoff."
+      secondaryLabel: "Open evidence",
+      kicker: "Workspace primed"
     };
   }
 
   if (!questionnaireReady && params.latestQuestionnaire) {
     return {
-      title: "Continue the review workflow",
-      description: "The next step is to approve the answers that are ready and flag the ones that need attention.",
+      mode: "review" as WorkspaceHomeMode,
+      title: "Approve the next grounded answer.",
+      description: "Keep the current row moving with proof in view.",
       ctaHref: `/w/${params.workspaceSlug}/questionnaires/${params.latestQuestionnaire.id}`,
       ctaLabel: "Continue review",
       secondaryHref: `/w/${params.workspaceSlug}/questionnaires`,
       secondaryLabel: "All questionnaires",
-      kicker: "In progress",
-      spotlightLabel: "Current stage",
-      spotlightValue: "Review in motion",
-      spotlightNote: "Stay focused on the next answer that needs a decision."
+      kicker: "In review"
     };
   }
 
   if (params.latestQuestionnaire) {
     return {
-      title: "Export the completed file",
-      description: "Your latest questionnaire is fully approved. Export the results when you are ready.",
-      ctaHref: `/w/${params.workspaceSlug}/questionnaires/${params.latestQuestionnaire.id}`,
-      ctaLabel: "Open export view",
+      mode: "export" as WorkspaceHomeMode,
+      title: "Export the approved file.",
+      description: "The latest questionnaire has settled into a finished file.",
+      ctaHref: `/api/questionnaires/${params.latestQuestionnaire.id}/export?workspaceSlug=${encodeURIComponent(params.workspaceSlug)}`,
+      ctaLabel: "Export latest",
       secondaryHref: `/w/${params.workspaceSlug}/questionnaires`,
       secondaryLabel: "All questionnaires",
-      kicker: "Ready to finish",
-      spotlightLabel: "Current stage",
-      spotlightValue: "Export the final file",
-      spotlightNote: "The latest questionnaire is fully approved and ready to leave the app."
+      kicker: "Ready to finish"
     };
   }
 
   return {
-    title: "Open your workspace",
-    description: "Everything is set up. Pick the next action and keep the workflow moving.",
+    mode: "review" as WorkspaceHomeMode,
+    title: "Continue the review workflow.",
+    description: "Keep moving through the next answer.",
     ctaHref: `/w/${params.workspaceSlug}/questionnaires`,
-    ctaLabel: "Go to questionnaires",
+    ctaLabel: "Open questionnaires",
     secondaryHref: `/w/${params.workspaceSlug}/evidence`,
-    secondaryLabel: "Go to evidence",
-    kicker: "Workspace",
-    spotlightLabel: "Current stage",
-    spotlightValue: "Choose the next action",
-    spotlightNote: "Keep moving without opening every page."
+    secondaryLabel: "Open evidence",
+    kicker: "Workspace"
   };
 }
 
@@ -118,63 +129,319 @@ function buildStepStatuses(params: {
   const hasQuestionnaire = params.questionnaireCount > 0;
   const hasEvidence = params.evidenceCount > 0;
 
-  const stepOne: StepStatus = hasEvidence ? "done" : "current";
-  const stepTwo: StepStatus = hasQuestionnaire ? "done" : hasEvidence ? "current" : "upcoming";
-  const stepThree: StepStatus = hasQuestionnaire ? (reviewDone ? "done" : "current") : "upcoming";
-  const stepFour: StepStatus = reviewDone ? "current" : "upcoming";
+  const stepOne: WorkspaceHomeStepStatus = hasEvidence ? "done" : "current";
+  const stepTwo: WorkspaceHomeStepStatus = hasQuestionnaire ? "done" : hasEvidence ? "current" : "upcoming";
+  const stepThree: WorkspaceHomeStepStatus = hasQuestionnaire ? (reviewDone ? "done" : "current") : "upcoming";
+  const stepFour: WorkspaceHomeStepStatus = reviewDone ? "current" : "upcoming";
 
   return [stepOne, stepTwo, stepThree, stepFour];
 }
 
+function formatRelativeAge(from: Date | null, now: Date) {
+  if (!from) {
+    return null;
+  }
+
+  const diffMs = Math.max(now.getTime() - from.getTime(), 0);
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffHours < 1) {
+    return "just now";
+  }
+
+  if (diffHours < 24) {
+    return `${diffHours}h ago`;
+  }
+
+  if (diffDays < 30) {
+    return `${diffDays}d ago`;
+  }
+
+  return `${Math.floor(diffDays / 30)}mo ago`;
+}
+
+function buildDailySeries(entries: Date[], days: number, now: Date) {
+  const series = Array.from({ length: days }, () => 0);
+
+  entries.forEach((date) => {
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays >= 0 && diffDays < days) {
+      const index = days - diffDays - 1;
+      series[index] += 1;
+    }
+  });
+
+  return series;
+}
+
+function buildInsightState(params: {
+  mode: WorkspaceHomeMode;
+  readyEvidenceCount: number;
+  evidenceCount: number;
+  approvedAnswersCount: number;
+  processingEvidenceCount: number;
+  staleApprovalsCount: number;
+  workspaceSlug: string;
+  latestQuestionnaireId: string | null;
+  latestQuestionnaire:
+    | {
+        totalCount: number;
+        approvedCount: number;
+      }
+    | null;
+  approvalSeriesLast7Days: number[];
+  approvalsLast7Days: number;
+  approvalsPrevious7Days: number;
+  approvalsLast30Days: number;
+  approvalsPrevious30Days: number;
+  answerMix: {
+    groundedCount: number;
+    reusedCount: number;
+    insufficientCount: number;
+    totalCount: number;
+  };
+  latestExportAge: string | null;
+  latestEvidenceRefreshAge: string | null;
+}): WorkspaceHomeInsightState {
+  const pendingRowsCount = params.latestQuestionnaire
+    ? Math.max(params.latestQuestionnaire.totalCount - params.latestQuestionnaire.approvedCount, 0)
+    : 0;
+
+  return {
+    showHybrid: params.mode === "review" || params.mode === "export",
+    supportLine:
+      params.mode === "questionnaire"
+        ? `${params.readyEvidenceCount}/${Math.max(params.evidenceCount, 1)} files ready • ${params.processingEvidenceCount} still processing • ${params.approvedAnswersCount} reusable answers`
+        : null,
+    exceptionItems: [
+      params.processingEvidenceCount > 0
+        ? {
+            label: "Evidence processing",
+            count: params.processingEvidenceCount,
+            href: `/w/${params.workspaceSlug}/evidence`
+          }
+        : null,
+      pendingRowsCount > 0 && params.latestQuestionnaireId
+        ? {
+            label: "Rows pending",
+            count: pendingRowsCount,
+            href: `/w/${params.workspaceSlug}/questionnaires/${params.latestQuestionnaireId}`
+          }
+        : null,
+      params.staleApprovalsCount > 0
+        ? {
+            label: "Stale approvals",
+            count: params.staleApprovalsCount,
+            href: `/w/${params.workspaceSlug}/questionnaires`
+          }
+        : null
+    ].filter((item): item is NonNullable<typeof item> => Boolean(item)),
+    approvalVelocity: {
+      series: params.approvalSeriesLast7Days,
+      last7Days: params.approvalsLast7Days,
+      previous7Days: params.approvalsPrevious7Days,
+      last30Days: params.approvalsLast30Days,
+      previous30Days: params.approvalsPrevious30Days
+    },
+    answerMix: params.answerMix,
+    quietContext: {
+      reusableAnswersCount: params.approvedAnswersCount,
+      latestExportAge: params.latestExportAge,
+      latestEvidenceRefreshAge: params.latestEvidenceRefreshAge
+    }
+  };
+}
+
 export default async function WorkspaceHomePage({ params }: { params: { workspaceSlug: string } }) {
   const access = await requirePageWorkspaceAccess(params.workspaceSlug, "VIEW_HOME");
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 7);
+  const fourteenDaysAgo = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 14);
+  const thirtyDaysAgo = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 30);
+  const sixtyDaysAgo = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 60);
 
-  const [evidenceCount, readyEvidenceCount, questionnaireCount, approvedAnswersCount, latestQuestionnaire, exportCount] =
-    await Promise.all([
-      prisma.evidenceDocument.count({
-        where: {
+  const [
+    evidenceCount,
+    readyEvidenceCount,
+    processingEvidenceCount,
+    questionnaireCount,
+    approvedAnswersCount,
+    latestQuestionnaire,
+    exportCount,
+    latestExportRecord,
+    latestReadyEvidence,
+    recentApprovedItems,
+    staleApprovalRows
+  ] = await Promise.all([
+    prisma.evidenceDocument.count({
+      where: {
+        workspaceId: access.workspace.id
+      }
+    }),
+    prisma.evidenceDocument.count({
+      where: {
+        workspaceId: access.workspace.id,
+        status: "READY"
+      }
+    }),
+    prisma.evidenceDocument.count({
+      where: {
+        workspaceId: access.workspace.id,
+        status: {
+          in: [DocumentStatus.UPLOADED, DocumentStatus.PROCESSING]
+        }
+      }
+    }),
+    prisma.questionnaire.count({
+      where: {
+        workspaceId: access.workspace.id
+      }
+    }),
+    prisma.approvedAnswer.count({
+      where: {
+        workspaceId: access.workspace.id
+      }
+    }),
+    prisma.questionnaire.findFirst({
+      where: {
+        workspaceId: access.workspace.id
+      },
+      orderBy: {
+        updatedAt: "desc"
+      },
+      select: {
+        id: true,
+        name: true,
+        totalCount: true,
+        approvedCount: true,
+        needsReviewCount: true
+      }
+    }),
+    prisma.exportRecord.count({
+      where: {
+        questionnaire: {
           workspaceId: access.workspace.id
         }
-      }),
-      prisma.evidenceDocument.count({
-        where: {
-          workspaceId: access.workspace.id,
-          status: "READY"
-        }
-      }),
-      prisma.questionnaire.count({
-        where: {
+      }
+    }),
+    prisma.exportRecord.findFirst({
+      where: {
+        questionnaire: {
           workspaceId: access.workspace.id
         }
-      }),
-      prisma.approvedAnswer.count({
-        where: {
-          workspaceId: access.workspace.id
-        }
-      }),
-      prisma.questionnaire.findFirst({
-        where: {
+      },
+      orderBy: {
+        createdAt: "desc"
+      },
+      select: {
+        createdAt: true
+      }
+    }),
+    prisma.evidenceDocument.findFirst({
+      where: {
+        workspaceId: access.workspace.id,
+        status: "READY"
+      },
+      orderBy: {
+        updatedAt: "desc"
+      },
+      select: {
+        updatedAt: true
+      }
+    }),
+    prisma.questionnaireItem.findMany({
+      where: {
+        questionnaire: {
           workspaceId: access.workspace.id
         },
-        orderBy: {
-          updatedAt: "desc"
-        },
-        select: {
-          id: true,
-          name: true,
-          totalCount: true,
-          approvedCount: true,
-          needsReviewCount: true
+        reviewStatus: "APPROVED",
+        updatedAt: {
+          gte: sixtyDaysAgo
         }
-      }),
-      prisma.exportRecord.count({
-        where: {
-          questionnaire: {
-            workspaceId: access.workspace.id
+      },
+      select: {
+        updatedAt: true
+      }
+    }),
+    prisma.$queryRaw<{ approvedAnswerId: string }[]>(Prisma.sql`
+      SELECT DISTINCT aae."approvedAnswerId"
+      FROM "ApprovedAnswerEvidence" aae
+      INNER JOIN "ApprovedAnswer" aa ON aa."id" = aae."approvedAnswerId"
+      INNER JOIN "EvidenceChunk" ec ON ec."id" = aae."chunkId"
+      WHERE aa."workspaceId" = ${access.workspace.id}
+        AND ec."evidenceFingerprint" <> aae."fingerprintAtApproval"
+    `)
+  ]);
+
+  const answerMixCounts = latestQuestionnaire
+    ? await Promise.all([
+        prisma.questionnaireItem.count({
+          where: {
+            questionnaireId: latestQuestionnaire.id,
+            answer: {
+              not: null
+            },
+            notFoundReason: null,
+            reusedFromApprovedAnswerId: null
           }
+        }),
+        prisma.questionnaireItem.count({
+          where: {
+            questionnaireId: latestQuestionnaire.id,
+            reusedFromApprovedAnswerId: {
+              not: null
+            }
+          }
+        }),
+        prisma.questionnaireItem.count({
+          where: {
+            questionnaireId: latestQuestionnaire.id,
+            notFoundReason: {
+              not: null
+            }
+          }
+        })
+      ])
+    : ([0, 0, 0] as const);
+
+  const nextActionItem = latestQuestionnaire
+    ? await prisma.questionnaireItem.findFirst({
+        where: {
+          questionnaireId: latestQuestionnaire.id,
+          reviewStatus: {
+            in: ["DRAFT", "NEEDS_REVIEW"]
+          }
+        },
+        orderBy: [
+          {
+            reviewStatus: "desc"
+          },
+          {
+            rowIndex: "asc"
+          }
+        ],
+        select: {
+          rowIndex: true,
+          text: true,
+          answer: true,
+          citations: true,
+          reviewStatus: true
         }
       })
-    ]);
+    : null;
+
+  const nextAction: WorkspaceHomeNextAction | null = nextActionItem
+    ? {
+        rowIndex: nextActionItem.rowIndex,
+        totalCount: latestQuestionnaire?.totalCount ?? 0,
+        questionText: nextActionItem.text,
+        answerText: nextActionItem.answer?.trim() || null,
+        citationSource: parseCitationDocNames(nextActionItem.citations)[0] ?? null,
+        citationCount: parseCitationDocNames(nextActionItem.citations).length,
+        reviewStatus: nextActionItem.reviewStatus
+      }
+    : null;
 
   const homeState = resolveHomeState({
     workspaceSlug: params.workspaceSlug,
@@ -190,214 +457,67 @@ export default async function WorkspaceHomePage({ params }: { params: { workspac
     latestQuestionnaire
   });
 
+  const approvalsLast7Days = recentApprovedItems.filter((item) => item.updatedAt >= sevenDaysAgo).length;
+  const approvalsPrevious7Days = recentApprovedItems.filter(
+    (item) => item.updatedAt < sevenDaysAgo && item.updatedAt >= fourteenDaysAgo
+  ).length;
+  const approvalsLast30Days = recentApprovedItems.filter((item) => item.updatedAt >= thirtyDaysAgo).length;
+  const approvalsPrevious30Days = recentApprovedItems.filter(
+    (item) => item.updatedAt < thirtyDaysAgo && item.updatedAt >= sixtyDaysAgo
+  ).length;
+
+  const insightState = buildInsightState({
+    mode: homeState.mode,
+    readyEvidenceCount,
+    evidenceCount,
+    approvedAnswersCount,
+    processingEvidenceCount,
+    staleApprovalsCount: staleApprovalRows.length,
+    workspaceSlug: params.workspaceSlug,
+    latestQuestionnaireId: latestQuestionnaire?.id ?? null,
+    latestQuestionnaire,
+    approvalSeriesLast7Days: buildDailySeries(
+      recentApprovedItems.filter((item) => item.updatedAt >= sevenDaysAgo).map((item) => item.updatedAt),
+      7,
+      now
+    ),
+    approvalsLast7Days,
+    approvalsPrevious7Days,
+    approvalsLast30Days,
+    approvalsPrevious30Days,
+    answerMix: {
+      groundedCount: answerMixCounts[0],
+      reusedCount: answerMixCounts[1],
+      insufficientCount: answerMixCounts[2],
+      totalCount: latestQuestionnaire?.totalCount ?? 0
+    },
+    latestExportAge: formatRelativeAge(latestExportRecord?.createdAt ?? null, now),
+    latestEvidenceRefreshAge: formatRelativeAge(latestReadyEvidence?.updatedAt ?? null, now)
+  });
+
   const isFirstRun = evidenceCount === 0 && questionnaireCount === 0 && !latestQuestionnaire;
 
-  if (isFirstRun) {
-    return (
-      <div className="page-stack home-activation-stack">
-        <section className="home-activation-hero">
-          <span className="home-activation-kicker">Workspace ready</span>
-          <h1>Start with source material.</h1>
-          <p>Upload the files you trust. The rest of the workflow stays quiet until it becomes relevant.</p>
-
-          <div className="home-activation-actions">
-            <Link className="button-primary" href={`/w/${params.workspaceSlug}/evidence`}>
-              Upload evidence
-            </Link>
-          </div>
-        </section>
-
-        <section className="home-activation-stage-block">
-          <div className="home-activation-rail" aria-label="Workflow steps">
-            {[
-              { number: "01", label: "Source", state: "active" },
-              { number: "02", label: "Questionnaire", state: "quiet" },
-              { number: "03", label: "Review", state: "quiet" },
-              { number: "04", label: "Export", state: "quiet" }
-            ].map((step) => (
-              <div className={`home-activation-rail-step home-activation-rail-step-${step.state}`} key={step.number}>
-                <span>{step.number}</span>
-                <strong>{step.label}</strong>
-              </div>
-            ))}
-          </div>
-
-          <div className="home-activation-stage">
-            <div className="home-activation-stage-glow home-activation-stage-glow-a" />
-            <div className="home-activation-stage-glow home-activation-stage-glow-b" />
-            <div className="home-activation-stage-grid" />
-
-            <div className="home-activation-stage-track">
-              <span className="home-activation-stage-line" />
-              <span className="home-activation-stage-line-fill" />
-              <span className="home-activation-stage-stop home-activation-stage-stop-active" />
-              <span className="home-activation-stage-stop" />
-              <span className="home-activation-stage-stop" />
-              <span className="home-activation-stage-stop" />
-            </div>
-
-            <article className="home-activation-module home-activation-module-source">
-              <span className="home-activation-module-label">Source</span>
-
-              <div className="home-activation-source-field">
-                <div className="home-activation-upload-signal">
-                  <span />
-                </div>
-
-                <div className="home-activation-doc home-activation-doc-a" />
-                <div className="home-activation-doc home-activation-doc-b" />
-                <div className="home-activation-doc home-activation-doc-c" />
-              </div>
-            </article>
-
-            <div className="home-activation-connector home-activation-connector-a" />
-            <div className="home-activation-connector home-activation-connector-b" />
-            <div className="home-activation-connector home-activation-connector-c" />
-
-            <article className="home-activation-module home-activation-module-evidence">
-              <span className="home-activation-module-label">Evidence</span>
-
-              <div className="home-activation-evidence-core">
-                <div className="home-activation-evidence-ring home-activation-evidence-ring-a" />
-                <div className="home-activation-evidence-ring home-activation-evidence-ring-b" />
-                <div className="home-activation-evidence-link home-activation-evidence-link-a" />
-                <div className="home-activation-evidence-link home-activation-evidence-link-b" />
-                <div className="home-activation-evidence-link home-activation-evidence-link-c" />
-                <div className="home-activation-evidence-node home-activation-evidence-node-a" />
-                <div className="home-activation-evidence-node home-activation-evidence-node-b home-activation-evidence-node-hot" />
-                <div className="home-activation-evidence-node home-activation-evidence-node-c" />
-                <div className="home-activation-evidence-node home-activation-evidence-node-d" />
-              </div>
-            </article>
-
-            <article className="home-activation-module home-activation-module-questionnaire">
-              <span className="home-activation-module-label">Questionnaire</span>
-
-              <div className="home-activation-questionnaire-field">
-                <div className="home-activation-questionnaire-head" />
-                <div className="home-activation-questionnaire-row home-activation-questionnaire-row-a" />
-                <div className="home-activation-questionnaire-row home-activation-questionnaire-row-b" />
-                <div className="home-activation-questionnaire-row home-activation-questionnaire-row-c" />
-              </div>
-            </article>
-
-            <article className="home-activation-module home-activation-module-proof">
-              <span className="home-activation-module-label">Proof</span>
-
-              <div className="home-activation-proof-field">
-                <div className="home-activation-proof-chip">1 citation</div>
-                <div className="home-activation-proof-line home-activation-proof-line-strong" />
-                <div className="home-activation-proof-line home-activation-proof-line-mid" />
-                <div className="home-activation-proof-line home-activation-proof-line-short" />
-              </div>
-            </article>
-
-            <div className="home-activation-status">
-              <span className="home-activation-status-kicker">Current step</span>
-              <strong>Source is the only thing in motion right now.</strong>
-              <p>Upload PDF, TXT, or MD files to unlock the next step.</p>
-            </div>
-          </div>
-        </section>
-
-        <p className="home-activation-footnote">
-          PDF, TXT, and MD supported. Private workspace boundaries stay intact from the first upload onward.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="page-stack home-stack">
-      <section className="home-stage-card">
-        <div className="home-stage-main">
-          <span className="eyebrow">{homeState.kicker}</span>
-          <h1>{homeState.title}</h1>
-          <p>{homeState.description}</p>
-          <div className="hero-actions">
-            <Link className="button-primary" href={homeState.ctaHref}>
-              {homeState.ctaLabel}
-            </Link>
-            <Link className="button-secondary" href={homeState.secondaryHref}>
-              {homeState.secondaryLabel}
-            </Link>
-          </div>
-        </div>
-
-        <div className="home-stage-side">
-          <article className="home-side-card home-side-card-primary">
-            <span>{homeState.spotlightLabel}</span>
-            <strong>{homeState.spotlightValue}</strong>
-            <small>{homeState.spotlightNote}</small>
-          </article>
-          <article className="home-side-card">
-            <span>Workspace health</span>
-            <strong>{readyEvidenceCount}/{Math.max(evidenceCount, 1)} evidence ready</strong>
-            <small>{questionnaireCount} questionnaire{questionnaireCount === 1 ? "" : "s"} active</small>
-          </article>
-        </div>
-      </section>
-
-      <section className="home-flow-row" aria-label="Onboarding progress">
-        {[
-          { number: "01", label: "Evidence", description: "Build the source library." },
-          { number: "02", label: "Questionnaire", description: "Import one buyer CSV." },
-          { number: "03", label: "Review", description: "Approve or flag each row." },
-          { number: "04", label: "Export", description: "Download the final file." }
-        ].map((step, index) => (
-          <article className={`flow-card flow-card-${stepStatuses[index]}`} key={step.number}>
-            <span>{step.number}</span>
-            <strong>{step.label}</strong>
-            <p>{step.description}</p>
-            <small>
-              {stepStatuses[index] === "done" ? "Done" : stepStatuses[index] === "current" ? "Current" : "Later"}
-            </small>
-          </article>
-        ))}
-      </section>
-
-      <section className="home-secondary-grid">
-        {latestQuestionnaire ? (
-          <section className="home-focus-card">
-            <span className="panel-kicker">Latest questionnaire</span>
-            <h2>{latestQuestionnaire.name}</h2>
-            <p>
-              {latestQuestionnaire.approvedCount}/{latestQuestionnaire.totalCount} approved
-              {latestQuestionnaire.needsReviewCount > 0 ? ` • ${latestQuestionnaire.needsReviewCount} need review` : ""}
-            </p>
-            <Link className="button-secondary" href={`/w/${params.workspaceSlug}/questionnaires/${latestQuestionnaire.id}`}>
-              Open
-            </Link>
-          </section>
-        ) : (
-          <section className="home-focus-card">
-            <span className="panel-kicker">Next up</span>
-            <h2>Start with one clean file.</h2>
-            <p>Attestly works best when the next action is obvious. Build the evidence library first, then bring in one buyer questionnaire.</p>
-            <Link className="button-secondary" href={homeState.ctaHref}>
-              {homeState.ctaLabel}
-            </Link>
-          </section>
-        )}
-
-        <details className="details-panel">
-          <summary>Workspace details</summary>
-          <div className="details-grid">
-            <div>
-              <span>Evidence files</span>
-              <strong>{evidenceCount}</strong>
-            </div>
-            <div>
-              <span>Approved answers</span>
-              <strong>{approvedAnswersCount}</strong>
-            </div>
-            <div>
-              <span>Exports</span>
-              <strong>{exportCount}</strong>
-            </div>
-          </div>
-        </details>
-      </section>
+    <div className={`page-stack workspace-home-stack ${isFirstRun ? "workspace-home-stack-first-run" : ""}`}>
+      <WorkspaceHomeStage
+        approvedAnswersCount={approvedAnswersCount}
+        ctaHref={homeState.ctaHref}
+        ctaLabel={homeState.ctaLabel}
+        description={homeState.description}
+        evidenceCount={evidenceCount}
+        exportCount={exportCount}
+        insightState={insightState}
+        kicker={homeState.kicker}
+        latestQuestionnaire={latestQuestionnaire}
+        mode={homeState.mode}
+        nextAction={nextAction}
+        readyEvidenceCount={readyEvidenceCount}
+        secondaryHref={homeState.secondaryHref}
+        secondaryLabel={homeState.secondaryLabel}
+        stepStatuses={stepStatuses}
+        title={homeState.title}
+        workspaceSlug={params.workspaceSlug}
+      />
     </div>
   );
 }

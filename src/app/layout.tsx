@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { Manrope } from "next/font/google";
+import { Sora } from "next/font/google";
 import "@/app/globals.css";
 
-const uiFont = Manrope({
+const uiFont = Sora({
   subsets: ["latin"],
-  variable: "--font-ui",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sora",
   display: "swap"
 });
 

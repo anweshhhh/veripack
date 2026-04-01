@@ -1,16 +1,9 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { Sora } from "next/font/google";
 import { getCurrentUserSafe } from "@/lib/auth";
 import { LandingProductCanvas } from "@/components/landing-product-canvas";
 import { SmoothScrollLink } from "@/components/smooth-scroll-link";
-
-const landingFont = Sora({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap"
-});
 
 export default async function LandingPage() {
   const currentUser = await getCurrentUserSafe();
@@ -18,7 +11,7 @@ export default async function LandingPage() {
   const primaryLabel = currentUser ? "Open workspace" : "Start with Google";
 
   return (
-    <main className={`${landingFont.className} landing-minimal`}>
+    <main className="landing-minimal">
       <header className="landing-minimal-header">
         <div className="landing-minimal-header-inner">
           <Link className="landing-minimal-brand" href="/">

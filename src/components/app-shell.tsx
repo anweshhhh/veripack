@@ -11,7 +11,6 @@ type NavItem = {
 };
 
 export function AppShell(props: {
-  workspaceName: string;
   workspaceSlug: string;
   children: React.ReactNode;
 }) {
@@ -33,7 +32,6 @@ export function AppShell(props: {
             </span>
             <span className="brand-copy">
               <strong>Attestly</strong>
-              <span>{props.workspaceName}</span>
             </span>
           </Link>
 
@@ -42,7 +40,7 @@ export function AppShell(props: {
               const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
               return (
-                <Link key={item.href} className={clsx("nav-pill", isActive && "nav-pill-active")} href={item.href}>
+                <Link key={item.href} className={clsx("nav-link", isActive && "nav-link-active")} href={item.href}>
                   {item.label}
                 </Link>
               );

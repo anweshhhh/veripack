@@ -23,11 +23,11 @@ function getQuestionnaireScopeDocumentCount(questionnaire: {
   evidenceScopeMode: EvidenceScopeMode;
   evidenceScopeDocumentIds: string[];
 }) {
-  if (questionnaire.evidenceScopeDocumentIds.length > 0) {
-    return questionnaire.evidenceScopeDocumentIds.length;
+  if (questionnaire.evidenceScopeMode === EvidenceScopeMode.ALL_READY) {
+    return 0;
   }
 
-  return questionnaire.evidenceScopeMode === EvidenceScopeMode.ALL_READY ? 0 : questionnaire.evidenceScopeDocumentIds.length;
+  return questionnaire.evidenceScopeDocumentIds.length;
 }
 
 export function describeQuestionnaireEvidenceScope(questionnaire: {
@@ -47,7 +47,7 @@ export function describeQuestionnaireEvidenceScope(questionnaire: {
   return {
     mode: questionnaire.evidenceScopeMode,
     count,
-    label: `All ready evidence${count > 0 ? ` (${count})` : ""}`
+    label: "All ready evidence"
   };
 }
 
@@ -254,20 +254,6 @@ export async function importQuestionnaire(params: {
   }
 
   return prisma.$transaction(async (tx) => {
-    const readyEvidenceDocuments = await tx.evidenceDocument.findMany({
-      where: {
-        workspaceId: access.workspace.id,
-        status: "READY",
-        archivedAt: null
-      },
-      orderBy: {
-        createdAt: "asc"
-      },
-      select: {
-        id: true
-      }
-    });
-
     const questionnaire = await tx.questionnaire.create({
       data: {
         workspaceId: access.workspace.id,
@@ -276,7 +262,7 @@ export async function importQuestionnaire(params: {
         questionColumn: questionHeader.label,
         originalHeaders: parsed.headers.map((header) => header.label),
         evidenceScopeMode: EvidenceScopeMode.ALL_READY,
-        evidenceScopeDocumentIds: readyEvidenceDocuments.map((document) => document.id),
+        evidenceScopeDocumentIds: [],
         totalCount: normalizedRows.length,
         createdByUserId: access.userId
       }
@@ -345,6 +331,8 @@ export async function runAutofillBatch(params: {
     select: {
       id: true,
       workspaceId: true,
+      evidenceScopeMode: true,
+      evidenceScopeDocumentIds: true,
       autofillCursor: true,
       totalCount: true
     }
@@ -381,10 +369,15 @@ export async function runAutofillBatch(params: {
   });
 
   for (const item of items) {
+    const scopedDocumentIds =
+      questionnaire.evidenceScopeMode === EvidenceScopeMode.SELECTED_DOCUMENTS
+        ? questionnaire.evidenceScopeDocumentIds
+        : undefined;
+
     const answer = await answerQuestionFromEvidence({
       workspaceId: access.workspace.id,
       questionText: item.text,
-      evidenceDocumentIds: questionnaire.evidenceScopeDocumentIds
+      evidenceDocumentIds: scopedDocumentIds
     });
 
     await prisma.questionnaireItem.update({

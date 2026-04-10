@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { DocumentStatus } from "@prisma/client";
+import { DocumentStatus, EvidenceScopeMode } from "@prisma/client";
 import { chunkText } from "@/lib/chunker";
 import { buildEvidenceBlobPath } from "@/lib/evidence-paths";
 import { EVIDENCE_SUPPORTED_MIME_TYPES, MAX_EVIDENCE_FILE_BYTES } from "@/lib/env";
@@ -220,6 +220,31 @@ export async function deleteEvidenceDocument(params: {
   await deleteStoredEvidenceObject(document.storagePath);
 
   await prisma.$transaction(async (tx) => {
+    const affectedQuestionnaires = await tx.questionnaire.findMany({
+      where: {
+        workspaceId: access.workspace.id,
+        evidenceScopeMode: EvidenceScopeMode.SELECTED_DOCUMENTS,
+        evidenceScopeDocumentIds: {
+          has: document.id
+        }
+      },
+      select: {
+        id: true,
+        evidenceScopeDocumentIds: true
+      }
+    });
+
+    for (const questionnaire of affectedQuestionnaires) {
+      await tx.questionnaire.update({
+        where: {
+          id: questionnaire.id
+        },
+        data: {
+          evidenceScopeDocumentIds: questionnaire.evidenceScopeDocumentIds.filter((id) => id !== document.id)
+        }
+      });
+    }
+
     await tx.evidenceChunk.deleteMany({
       where: {
         documentId: document.id

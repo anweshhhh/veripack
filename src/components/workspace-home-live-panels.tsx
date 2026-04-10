@@ -11,7 +11,8 @@ type WorkspaceHomeNextAction = {
   answerText: string | null;
   citationSource: string | null;
   citationCount: number;
-  reviewStatus: "DRAFT" | "NEEDS_REVIEW" | "APPROVED";
+  systemStatus: "PENDING" | "READY" | "PARTIAL" | "BLOCKED";
+  reviewState: "UNREVIEWED" | "NEEDS_REVIEW" | "APPROVED";
 };
 
 type WorkspaceHomeInsightState = {
@@ -479,23 +480,41 @@ function QuietContext(props: { insightState: WorkspaceHomeInsightState }) {
 }
 
 export function WorkspaceHomeLiveReviewMain(props: ReviewSurfaceProps) {
-  const statusIsChanging = useTransientFlag(props.nextAction?.reviewStatus ?? "DRAFT");
+  const statusIsChanging = useTransientFlag(
+    props.nextAction ? `${props.nextAction.reviewState}:${props.nextAction.systemStatus}` : "UNREVIEWED:PENDING"
+  );
   const proofPulse = usePulseOnIncrease(props.nextAction?.citationCount ?? 0);
   const proofIsLive = Boolean(props.nextAction?.citationCount && props.nextAction.citationCount > 0);
   const questionText = props.nextAction?.questionText ?? "The next row is ready for review.";
-  const answerText = props.nextAction?.answerText ?? "No grounded draft has been written for this row yet.";
+  const answerText =
+    props.nextAction?.answerText ??
+    (props.nextAction?.systemStatus === "BLOCKED"
+      ? "Evidence is missing for this row."
+      : "No grounded draft has been written for this row yet.");
   const proofLabel = props.nextAction?.citationSource ?? "Proof not attached yet";
   const proofCountLabel =
     props.nextAction && props.nextAction.citationCount > 0
       ? `${props.nextAction.citationCount} citation${props.nextAction.citationCount === 1 ? "" : "s"} attached`
       : "Awaiting citation";
+  const nextActionStatusLabel =
+    props.nextAction?.reviewState === "APPROVED"
+      ? "Approved"
+      : props.nextAction?.reviewState === "NEEDS_REVIEW"
+        ? "Needs review"
+        : props.nextAction?.systemStatus === "PARTIAL"
+          ? "Partial"
+          : props.nextAction?.systemStatus === "BLOCKED"
+            ? "Blocked"
+            : props.nextAction?.systemStatus === "READY"
+              ? "Ready"
+              : "Pending";
 
   return (
     <>
       <article className="workspace-stage-main workspace-stage-main-review">
         <header className="workspace-stage-main-head">
           <div className="workspace-stage-main-copy">
-            <span className="workspace-stage-sheet-kicker">Latest questionnaire</span>
+            <span className="workspace-stage-sheet-kicker">Latest packet</span>
             <strong>{props.latestQuestionnaireName}</strong>
           </div>
 
@@ -511,13 +530,13 @@ export function WorkspaceHomeLiveReviewMain(props: ReviewSurfaceProps) {
               className={clsx(
                 "workspace-stage-meta-chip",
                 "workspace-stage-status-pill",
-                props.nextAction?.reviewStatus === "NEEDS_REVIEW"
+                props.nextAction?.reviewState === "NEEDS_REVIEW" || props.nextAction?.systemStatus === "PARTIAL"
                   ? "workspace-stage-status-pill-review"
                   : "workspace-stage-status-pill-draft",
                 statusIsChanging && "workspace-stage-status-pill-changing"
               )}
             >
-              {props.nextAction?.reviewStatus === "NEEDS_REVIEW" ? "Needs review" : "Draft"}
+              {nextActionStatusLabel}
             </span>
           </div>
         </header>

@@ -9,7 +9,7 @@ import { sha256 } from "@/lib/fingerprint";
 import { createEmbedding } from "@/lib/openai";
 import { prisma } from "@/lib/prisma";
 import { embeddingToVectorLiteral } from "@/lib/retrieval";
-import { putStoredEvidenceObject } from "@/lib/storage";
+import { deleteStoredEvidenceObject, putStoredEvidenceObject } from "@/lib/storage";
 import { requireWorkspaceAccess } from "@/lib/workspaces";
 
 function normalizeEvidenceMimeType(mimeType: string | null | undefined) {
@@ -191,4 +191,49 @@ export async function uploadEvidenceDocument(params: {
       id: document.id
     }
   });
+}
+
+export async function deleteEvidenceDocument(params: {
+  userId: string;
+  workspaceSlug: string;
+  documentId: string;
+}) {
+  const access = await requireWorkspaceAccess(params.userId, params.workspaceSlug, "UPLOAD_EVIDENCE");
+  const document = await prisma.evidenceDocument.findFirst({
+    where: {
+      id: params.documentId,
+      workspaceId: access.workspace.id
+    },
+    select: {
+      id: true,
+      storagePath: true
+    }
+  });
+
+  if (!document) {
+    throw new AppError("Evidence document not found.", {
+      code: "EVIDENCE_NOT_FOUND",
+      status: 404
+    });
+  }
+
+  await deleteStoredEvidenceObject(document.storagePath);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.evidenceChunk.deleteMany({
+      where: {
+        documentId: document.id
+      }
+    });
+
+    await tx.evidenceDocument.delete({
+      where: {
+        id: document.id
+      }
+    });
+  });
+
+  return {
+    documentId: document.id
+  };
 }

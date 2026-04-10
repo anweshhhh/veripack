@@ -21,12 +21,12 @@ const PRODUCT_STEPS: ProductStep[] = [
     id: "evidence",
     label: "Evidence",
     title: "Make the source set retrievable",
-    caption: "Attestly keeps every draft tied back to the material it came from."
+    caption: "VeriPack keeps every draft tied back to the material it came from."
   },
   {
     id: "questionnaire",
-    label: "Questionnaire",
-    title: "Bring in the buyer file",
+    label: "Packet",
+    title: "Bring in the buyer packet",
     caption: "Each question lines up against the right evidence without losing context."
   },
   {
@@ -36,6 +36,21 @@ const PRODUCT_STEPS: ProductStep[] = [
     caption: "Drafts resolve into cited answers that are ready to review and send."
   }
 ];
+
+function getStageReadout(step: ProductStep["id"]) {
+  switch (step) {
+    case "documents":
+      return ["6 source docs", "2 packets waiting", "vault warming"];
+    case "evidence":
+      return ["24 chunks live", "scope aligned", "retrieval ready"];
+    case "questionnaire":
+      return ["17 rows pending", "4 needs review", "grounding active"];
+    case "proof":
+      return ["1 linked citation", "approval ready", "export lane open"];
+    default:
+      return [];
+  }
+}
 
 export function LandingProductCanvas() {
   const stepRefs = useRef<Array<HTMLElement | null>>([]);
@@ -91,15 +106,7 @@ export function LandingProductCanvas() {
   }, []);
 
   const activeStep = PRODUCT_STEPS[activeIndex];
-
-  const handleStepSelect = (index: number) => {
-    setActiveIndex(index);
-
-    stepRefs.current[index]?.scrollIntoView({
-      behavior: "smooth",
-      block: "center"
-    });
-  };
+  const stageReadout = getStageReadout(activeStep.id);
 
   return (
     <section className="landing-product landing-product-story" id="product">
@@ -128,20 +135,15 @@ export function LandingProductCanvas() {
         </div>
 
         <div className="landing-product-stage-shell">
-          <div aria-label="Product flow" className="landing-product-rail" role="tablist">
+          <div aria-hidden="true" className="landing-product-rail">
             {PRODUCT_STEPS.map((step, index) => (
-              <button
-                aria-controls={`product-step-${step.id}`}
-                aria-selected={index === activeIndex}
+              <div
                 className={clsx("landing-product-rail-step", index === activeIndex && "landing-product-rail-step-active")}
                 key={step.id}
-                onClick={() => handleStepSelect(index)}
-                role="tab"
-                type="button"
               >
                 <span className="landing-product-rail-index">{`0${index + 1}`}</span>
                 <span className="landing-product-rail-label">{step.label}</span>
-              </button>
+              </div>
             ))}
           </div>
 
@@ -149,6 +151,14 @@ export function LandingProductCanvas() {
             <div className="landing-product-stage-glow landing-product-stage-glow-a" />
             <div className="landing-product-stage-glow landing-product-stage-glow-b" />
             <div className="landing-product-stage-grid" />
+
+            <div className="landing-product-readout">
+              {stageReadout.map((item) => (
+                <span className="landing-product-readout-pill" key={item}>
+                  {item}
+                </span>
+              ))}
+            </div>
 
             <div className="landing-product-stage-track">
               <div className="landing-product-stage-track-line" />
@@ -203,7 +213,7 @@ export function LandingProductCanvas() {
             </div>
 
             <div className="landing-stage-module landing-stage-module-questionnaire">
-              <span className="landing-stage-module-label">Questionnaire</span>
+              <span className="landing-stage-module-label">Packet</span>
 
               <div className="landing-stage-questionnaire-field">
                 <div className="landing-stage-questionnaire-head" />
@@ -231,9 +241,18 @@ export function LandingProductCanvas() {
                 </div>
               </div>
             </div>
+
+            <div className="landing-product-proof-strip" aria-hidden="true">
+              <span className="landing-product-proof-strip-label">Live packet</span>
+              <div className="landing-product-proof-strip-line" />
+              <span className="landing-product-proof-strip-value">{activeStep.label}</span>
+            </div>
           </div>
 
-          <p className="landing-product-stage-caption">{activeStep.caption}</p>
+          <div className="landing-product-stage-copy">
+            <strong>{activeStep.title}</strong>
+            <p className="landing-product-stage-caption">{activeStep.caption}</p>
+          </div>
         </div>
       </div>
     </section>

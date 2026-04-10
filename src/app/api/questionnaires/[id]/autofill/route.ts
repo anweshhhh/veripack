@@ -9,7 +9,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const payload = (await request.json()) as { workspaceSlug?: string; batchSize?: number };
     const workspaceSlug = payload.workspaceSlug?.trim() || "";
 
-    await runAutofillBatch({
+    const batch = await runAutofillBatch({
       userId: currentUser.user.id,
       workspaceSlug,
       questionnaireId: params.id,
@@ -19,7 +19,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const data = await getQuestionnairePageData(currentUser.user.id, workspaceSlug, params.id);
     return NextResponse.json({
       questionnaire: data.questionnaire,
-      items: data.items
+      items: data.items,
+      processedCount: batch.processedCount,
+      nextCursor: batch.nextCursor,
+      done: batch.done
     });
   } catch (error) {
     return toApiErrorResponse(error, "Failed to run autofill.");

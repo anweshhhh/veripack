@@ -30,6 +30,7 @@ JOIN "EvidenceDocument" ed ON ed."id" = ec."documentId"
 WHERE ed."workspaceId" = $2
   AND ed."archivedAt" IS NULL
   AND ed."status" = 'READY'
+  AND ($4::text[] IS NULL OR array_length($4::text[], 1) IS NULL OR ed."id" = ANY($4::text[]))
   AND ec."embedding" IS NOT NULL
 ORDER BY distance ASC, ec."id" ASC
 LIMIT $3
@@ -97,6 +98,7 @@ export async function retrieveTopChunks(params: {
   workspaceId: string;
   embedding: number[];
   questionText: string;
+  evidenceDocumentIds?: string[];
   topK?: number;
   snippetChars?: number;
 }) {
@@ -104,7 +106,8 @@ export async function retrieveTopChunks(params: {
     RETRIEVAL_SQL,
     embeddingToVectorLiteral(params.embedding),
     params.workspaceId,
-    params.topK ?? DEFAULT_TOP_K
+    params.topK ?? DEFAULT_TOP_K,
+    params.evidenceDocumentIds?.length ? params.evidenceDocumentIds : null
   );
 
   return rows.map<RetrievedChunk>((row) => ({

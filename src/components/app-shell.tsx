@@ -17,9 +17,17 @@ export function AppShell(props: {
   const pathname = usePathname();
   const navItems: NavItem[] = [
     { href: `/w/${props.workspaceSlug}`, label: "Home" },
-    { href: `/w/${props.workspaceSlug}/evidence`, label: "Evidence" },
-    { href: `/w/${props.workspaceSlug}/questionnaires`, label: "Questionnaires" }
+    { href: `/w/${props.workspaceSlug}/library`, label: "Library" },
+    { href: `/w/${props.workspaceSlug}/review`, label: "Review" }
   ];
+
+  function isNavItemActive(item: NavItem) {
+    if (item.label === "Home") {
+      return pathname === item.href;
+    }
+
+    return pathname === item.href || pathname.startsWith(`${item.href}/`);
+  }
 
   return (
     <div className="app-shell">
@@ -31,13 +39,13 @@ export function AppShell(props: {
               <span />
             </span>
             <span className="brand-copy">
-              <strong>Attestly</strong>
+              <strong>VeriPack</strong>
             </span>
           </Link>
 
           <nav className="main-nav" aria-label="Workspace navigation">
             {navItems.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const isActive = isNavItemActive(item);
 
               return (
                 <Link key={item.href} className={clsx("nav-link", isActive && "nav-link-active")} href={item.href}>

@@ -31,7 +31,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     redirect(`/w/${currentUser.access.workspace.slug}`);
   }
 
-  const callbackUrl = getQueryValue(searchParams?.callbackUrl) ?? "/";
+  const callbackUrl = getQueryValue(searchParams?.callbackUrl) ?? "/post-login";
   const error = getQueryValue(searchParams?.error);
 
   return (
@@ -39,10 +39,13 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <header className="site-header">
         <div className="site-header-inner">
           <Link className="brand-link" href="/">
-            <span className="brand-mark">A</span>
+            <span aria-hidden="true" className="brand-mark brand-mark-dual">
+              <span />
+              <span />
+            </span>
             <span className="brand-copy">
-              <strong>Attestly</strong>
-              <span>Evidence-first questionnaires</span>
+              <strong>VeriPack</strong>
+              <span>Evidence-first proof packets</span>
             </span>
           </Link>
         </div>

@@ -10,8 +10,8 @@ const uiFont = Sora({
 });
 
 export const metadata: Metadata = {
-  title: "Veripack",
-  description: "Evidence-first security questionnaire autofill with citations, review, and export."
+  title: "VeriPack",
+  description: "Evidence-first proof packets with grounded review, citations, and export."
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

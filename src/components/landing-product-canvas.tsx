@@ -57,51 +57,46 @@ export function LandingProductCanvas() {
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
-    const updateActiveStep = () => {
-      const viewportAnchor = window.innerHeight * 0.48;
-      let closestIndex = 0;
-      let closestDistance = Number.POSITIVE_INFINITY;
+    const visibleRatios = new Map<number, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const index = stepRefs.current.findIndex((step) => step === entry.target);
+          if (index >= 0) {
+            visibleRatios.set(index, entry.isIntersecting ? entry.intersectionRatio : 0);
+          }
+        });
 
-      stepRefs.current.forEach((step, index) => {
-        if (!step) {
-          return;
-        }
+        let nextIndex = 0;
+        let bestRatio = -1;
 
-        const rect = step.getBoundingClientRect();
-        const stepCenter = rect.top + rect.height / 2;
-        const distance = Math.abs(stepCenter - viewportAnchor);
+        visibleRatios.forEach((ratio, index) => {
+          if (ratio > bestRatio) {
+            bestRatio = ratio;
+            nextIndex = index;
+          }
+        });
 
-        if (distance < closestDistance) {
-          closestDistance = distance;
-          closestIndex = index;
-        }
-      });
+        setActiveIndex((current) => (current === nextIndex ? current : nextIndex));
+      },
+      {
+        root: null,
+        rootMargin: "-18% 0px -18% 0px",
+        threshold: [0.2, 0.35, 0.5, 0.65, 0.8]
+      }
+    );
 
-      setActiveIndex((current) => (current === closestIndex ? current : closestIndex));
-    };
+    stepRefs.current.forEach((step, index) => {
+      if (!step) {
+        return;
+      }
 
-    let frameId = 0;
-    let warmupFrame = 0;
-    let warmupTimer = 0;
-
-    const handleScroll = () => {
-      window.cancelAnimationFrame(frameId);
-      frameId = window.requestAnimationFrame(updateActiveStep);
-    };
-
-    updateActiveStep();
-    warmupFrame = window.requestAnimationFrame(updateActiveStep);
-    warmupTimer = window.setTimeout(updateActiveStep, 120);
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", handleScroll);
+      visibleRatios.set(index, 0);
+      observer.observe(step);
+    });
 
     return () => {
-      window.cancelAnimationFrame(frameId);
-      window.cancelAnimationFrame(warmupFrame);
-      window.clearTimeout(warmupTimer);
-      window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleScroll);
+      observer.disconnect();
     };
   }, []);
 

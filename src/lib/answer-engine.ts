@@ -10,10 +10,10 @@ export type Citation = {
 };
 
 export type EvidenceAnswer = {
-  answer: string;
+  answer: string | null;
   citations: Citation[];
   confidence: "low" | "med" | "high";
-  needsReview: boolean;
+  systemStatus: "READY" | "PARTIAL" | "BLOCKED";
   reusedFromApprovedAnswerId?: string;
   reusedFromApprovedMatchType?: "EXACT" | "NEAR_EXACT" | "SEMANTIC";
   notFoundReason?: string | null;
@@ -45,10 +45,12 @@ function scoreLexicalOverlap(questionText: string, text: string) {
 export async function answerQuestionFromEvidence(params: {
   workspaceId: string;
   questionText: string;
+  evidenceDocumentIds?: string[];
 }): Promise<EvidenceAnswer> {
   const reused = await findApprovedAnswerReuse({
     workspaceId: params.workspaceId,
-    questionText: params.questionText
+    questionText: params.questionText,
+    evidenceDocumentIds: params.evidenceDocumentIds
   });
 
   if (reused) {
@@ -56,7 +58,7 @@ export async function answerQuestionFromEvidence(params: {
       answer: reused.answerText,
       citations: asCitations(reused),
       confidence: reused.matchType === "EXACT" ? "high" : "med",
-      needsReview: reused.matchType !== "EXACT",
+      systemStatus: "READY",
       reusedFromApprovedAnswerId: reused.approvedAnswerId,
       reusedFromApprovedMatchType: reused.matchType
     };
@@ -67,6 +69,7 @@ export async function answerQuestionFromEvidence(params: {
     workspaceId: params.workspaceId,
     embedding,
     questionText: params.questionText,
+    evidenceDocumentIds: params.evidenceDocumentIds,
     topK: 12
   });
 
@@ -85,10 +88,10 @@ export async function answerQuestionFromEvidence(params: {
 
   if (reranked.length === 0 || reranked.every((chunk) => chunk.similarity < 0.2)) {
     return {
-      answer: NOT_FOUND_TEXT,
+      answer: null,
       citations: [],
       confidence: "low",
-      needsReview: true,
+      systemStatus: "BLOCKED",
       notFoundReason: "NO_RELEVANT_EVIDENCE"
     };
   }
@@ -105,7 +108,7 @@ export async function answerQuestionFromEvidence(params: {
   return {
     answer:
       grounded.outcome === "NOT_FOUND"
-        ? NOT_FOUND_TEXT
+        ? null
         : grounded.outcome === "PARTIAL"
           ? grounded.answer.startsWith(PARTIAL_PREFIX)
             ? grounded.answer
@@ -120,7 +123,8 @@ export async function answerQuestionFromEvidence(params: {
       };
     }),
     confidence: grounded.confidence,
-    needsReview: grounded.needsReview,
+    systemStatus:
+      grounded.outcome === "NOT_FOUND" ? "BLOCKED" : grounded.outcome === "PARTIAL" ? "PARTIAL" : "READY",
     notFoundReason: grounded.notFoundReason
   };
 }

@@ -24,6 +24,23 @@ export const QuestionReviewStatus = {
 
 export type QuestionReviewStatus = (typeof QuestionReviewStatus)[keyof typeof QuestionReviewStatus];
 
+export const QuestionSystemStatus = {
+  PENDING: "PENDING",
+  READY: "READY",
+  PARTIAL: "PARTIAL",
+  BLOCKED: "BLOCKED"
+} as const;
+
+export type QuestionSystemStatus = (typeof QuestionSystemStatus)[keyof typeof QuestionSystemStatus];
+
+export const QuestionReviewState = {
+  UNREVIEWED: "UNREVIEWED",
+  NEEDS_REVIEW: "NEEDS_REVIEW",
+  APPROVED: "APPROVED"
+} as const;
+
+export type QuestionReviewState = (typeof QuestionReviewState)[keyof typeof QuestionReviewState];
+
 export const ReuseMatchType = {
   EXACT: "EXACT",
   NEAR_EXACT: "NEAR_EXACT",

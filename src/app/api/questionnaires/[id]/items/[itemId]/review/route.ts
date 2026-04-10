@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { QuestionReviewStatus } from "@prisma/client";
+import { QuestionReviewState } from "@prisma/client";
 import { requireApiUser } from "@/lib/auth";
 import { getQuestionnairePageData, reviewQuestionnaireItem } from "@/lib/questionnaires";
 import { toApiErrorResponse } from "@/lib/api-response";
@@ -13,13 +13,13 @@ export async function POST(
     const payload = (await request.json()) as {
       workspaceSlug?: string;
       answer?: string;
-      reviewStatus?: string;
+      reviewState?: string;
     };
 
-    const reviewStatus =
-      payload.reviewStatus === QuestionReviewStatus.APPROVED
-        ? QuestionReviewStatus.APPROVED
-        : QuestionReviewStatus.NEEDS_REVIEW;
+    const reviewState =
+      payload.reviewState === QuestionReviewState.APPROVED
+        ? QuestionReviewState.APPROVED
+        : QuestionReviewState.NEEDS_REVIEW;
 
     await reviewQuestionnaireItem({
       userId: currentUser.user.id,
@@ -27,7 +27,7 @@ export async function POST(
       questionnaireId: params.id,
       itemId: params.itemId,
       answer: payload.answer ?? "",
-      reviewStatus
+      reviewState
     });
 
     const data = await getQuestionnairePageData(

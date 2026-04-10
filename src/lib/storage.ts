@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { get, head, put } from "@vercel/blob";
+import { del, get, head, put } from "@vercel/blob";
 import { BlobStorageBackend, getBlobMockRoot, getBlobStorageBackend } from "@/lib/env";
 
 export type StoredEvidenceObject = {
@@ -47,6 +47,18 @@ async function headMockBlob(pathnameValue: string): Promise<StoredEvidenceObject
 async function getMockBlob(pathnameValue: string) {
   const filePath = getMockBlobFilePath(pathnameValue);
   return fs.readFile(filePath);
+}
+
+async function deleteMockBlob(pathnameValue: string) {
+  const filePath = getMockBlobFilePath(pathnameValue);
+  try {
+    await fs.unlink(filePath);
+  } catch (error) {
+    const nodeError = error as NodeJS.ErrnoException;
+    if (nodeError.code !== "ENOENT") {
+      throw error;
+    }
+  }
 }
 
 export async function putStoredEvidenceObject(params: {
@@ -102,4 +114,20 @@ export async function readStoredEvidenceBytes(pathnameValue: string) {
   }
 
   return readWebStreamToBuffer(result.stream);
+}
+
+export async function deleteStoredEvidenceObject(pathnameValue: string) {
+  if (getBlobStorageBackend() === BlobStorageBackend.MOCK) {
+    await deleteMockBlob(pathnameValue);
+    return;
+  }
+
+  try {
+    await del(pathnameValue);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (!message.toLowerCase().includes("not found")) {
+      throw error;
+    }
+  }
 }

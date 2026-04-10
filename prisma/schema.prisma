@@ -28,6 +28,19 @@ enum QuestionReviewStatus {
   APPROVED
 }
 
+enum QuestionSystemStatus {
+  PENDING
+  READY
+  PARTIAL
+  BLOCKED
+}
+
+enum QuestionReviewState {
+  UNREVIEWED
+  NEEDS_REVIEW
+  APPROVED
+}
+
 enum ReuseMatchType {
   EXACT
   NEAR_EXACT
@@ -39,6 +52,11 @@ enum AutofillRunStatus {
   RUNNING
   COMPLETED
   ERROR
+}
+
+enum EvidenceScopeMode {
+  ALL_READY
+  SELECTED_DOCUMENTS
 }
 
 model User {
@@ -127,6 +145,8 @@ model Questionnaire {
   sourceFileName     String
   questionColumn     String
   originalHeaders    String[]
+  evidenceScopeMode  EvidenceScopeMode  @default(ALL_READY)
+  evidenceScopeDocumentIds String[]     @default([])
   totalCount         Int                @default(0)
   answeredCount      Int                @default(0)
   approvedCount      Int                @default(0)
@@ -154,6 +174,8 @@ model QuestionnaireItem {
   text                       String
   answer                     String?
   citations                  Json
+  systemStatus               QuestionSystemStatus @default(PENDING)
+  reviewState                QuestionReviewState  @default(UNREVIEWED)
   reviewStatus               QuestionReviewStatus @default(DRAFT)
   draftSuggestionApplied     Boolean              @default(false)
   reusedFromApprovedAnswerId String?
@@ -164,6 +186,8 @@ model QuestionnaireItem {
   updatedAt                  DateTime             @updatedAt
 
   @@unique([questionnaireId, rowIndex])
+  @@index([questionnaireId, systemStatus])
+  @@index([questionnaireId, reviewState])
   @@index([questionnaireId, reviewStatus])
 }
 

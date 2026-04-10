@@ -1,4 +1,12 @@
-import { Prisma, QuestionReviewStatus, ReuseMatchType, type QuestionnaireItem } from "@prisma/client";
+import {
+  EvidenceScopeMode,
+  Prisma,
+  QuestionReviewState,
+  QuestionReviewStatus,
+  QuestionSystemStatus,
+  ReuseMatchType,
+  type QuestionnaireItem
+} from "@prisma/client";
 import { NOT_FOUND_TEXT, answerQuestionFromEvidence, type Citation } from "@/lib/answer-engine";
 import { AppError } from "@/lib/errors";
 import { buildQuestionnaireExportCsv } from "@/lib/export";
@@ -10,6 +18,38 @@ import { embeddingToVectorLiteral } from "@/lib/retrieval";
 import { requireWorkspaceAccess } from "@/lib/workspaces";
 
 type PrismaTx = Prisma.TransactionClient | typeof prisma;
+
+function getQuestionnaireScopeDocumentCount(questionnaire: {
+  evidenceScopeMode: EvidenceScopeMode;
+  evidenceScopeDocumentIds: string[];
+}) {
+  if (questionnaire.evidenceScopeMode === EvidenceScopeMode.ALL_READY) {
+    return 0;
+  }
+
+  return questionnaire.evidenceScopeDocumentIds.length;
+}
+
+export function describeQuestionnaireEvidenceScope(questionnaire: {
+  evidenceScopeMode: EvidenceScopeMode;
+  evidenceScopeDocumentIds: string[];
+}) {
+  const count = getQuestionnaireScopeDocumentCount(questionnaire);
+
+  if (questionnaire.evidenceScopeMode === EvidenceScopeMode.SELECTED_DOCUMENTS) {
+    return {
+      mode: questionnaire.evidenceScopeMode,
+      count,
+      label: `${count} selected source file${count === 1 ? "" : "s"}`
+    };
+  }
+
+  return {
+    mode: questionnaire.evidenceScopeMode,
+    count,
+    label: "All ready evidence"
+  };
+}
 
 function jsonToCitations(value: Prisma.JsonValue): Citation[] {
   if (!Array.isArray(value)) {
@@ -33,6 +73,18 @@ function jsonToCitations(value: Prisma.JsonValue): Citation[] {
     }));
 }
 
+function normalizeItemAnswer(answer: string | null, notFoundReason: string | null) {
+  if (!answer) {
+    return null;
+  }
+
+  if (notFoundReason || answer.trim() === NOT_FOUND_TEXT) {
+    return null;
+  }
+
+  return answer;
+}
+
 async function recomputeQuestionnaireStats(tx: PrismaTx, questionnaireId: string) {
   const items = await tx.questionnaireItem.findMany({
     where: {
@@ -40,13 +92,13 @@ async function recomputeQuestionnaireStats(tx: PrismaTx, questionnaireId: string
     },
     select: {
       answer: true,
-      reviewStatus: true
+      reviewState: true
     }
   });
 
   const answeredCount = items.filter((item) => Boolean(item.answer?.trim())).length;
-  const approvedCount = items.filter((item) => item.reviewStatus === QuestionReviewStatus.APPROVED).length;
-  const needsReviewCount = items.filter((item) => item.reviewStatus === QuestionReviewStatus.NEEDS_REVIEW).length;
+  const approvedCount = items.filter((item) => item.reviewState === QuestionReviewState.APPROVED).length;
+  const needsReviewCount = items.filter((item) => item.reviewState === QuestionReviewState.NEEDS_REVIEW).length;
 
   await tx.questionnaire.update({
     where: {
@@ -209,6 +261,8 @@ export async function importQuestionnaire(params: {
         sourceFileName: params.fileName,
         questionColumn: questionHeader.label,
         originalHeaders: parsed.headers.map((header) => header.label),
+        evidenceScopeMode: EvidenceScopeMode.ALL_READY,
+        evidenceScopeDocumentIds: [],
         totalCount: normalizedRows.length,
         createdByUserId: access.userId
       }
@@ -256,6 +310,7 @@ export async function getQuestionnairePageData(userId: string, workspaceSlug: st
     questionnaire,
     items: questionnaire.items.map((item) => ({
       ...item,
+      answer: normalizeItemAnswer(item.answer, item.notFoundReason),
       citations: jsonToCitations(item.citations)
     }))
   };
@@ -276,6 +331,8 @@ export async function runAutofillBatch(params: {
     select: {
       id: true,
       workspaceId: true,
+      evidenceScopeMode: true,
+      evidenceScopeDocumentIds: true,
       autofillCursor: true,
       totalCount: true
     }
@@ -312,9 +369,15 @@ export async function runAutofillBatch(params: {
   });
 
   for (const item of items) {
+    const scopedDocumentIds =
+      questionnaire.evidenceScopeMode === EvidenceScopeMode.SELECTED_DOCUMENTS
+        ? questionnaire.evidenceScopeDocumentIds
+        : undefined;
+
     const answer = await answerQuestionFromEvidence({
       workspaceId: access.workspace.id,
-      questionText: item.text
+      questionText: item.text,
+      evidenceDocumentIds: scopedDocumentIds
     });
 
     await prisma.questionnaireItem.update({
@@ -324,7 +387,9 @@ export async function runAutofillBatch(params: {
       data: {
         answer: answer.answer,
         citations: answer.citations,
-        reviewStatus: answer.needsReview ? QuestionReviewStatus.NEEDS_REVIEW : QuestionReviewStatus.DRAFT,
+        systemStatus: answer.systemStatus as QuestionSystemStatus,
+        reviewState: QuestionReviewState.UNREVIEWED,
+        reviewStatus: QuestionReviewStatus.DRAFT,
         draftSuggestionApplied: false,
         reusedFromApprovedAnswerId: answer.reusedFromApprovedAnswerId,
         reuseMatchType: answer.reusedFromApprovedMatchType
@@ -364,7 +429,7 @@ export async function reviewQuestionnaireItem(params: {
   questionnaireId: string;
   itemId: string;
   answer: string;
-  reviewStatus: QuestionReviewStatus;
+  reviewState: QuestionReviewState;
 }) {
   const access = await requireWorkspaceAccess(params.userId, params.workspaceSlug, "APPROVE_ANSWERS");
   const item = await prisma.questionnaireItem.findFirst({
@@ -388,8 +453,14 @@ export async function reviewQuestionnaireItem(params: {
     const nextAnswer = params.answer.trim();
     const currentCitations = jsonToCitations(item.citations);
 
-    if (params.reviewStatus === QuestionReviewStatus.APPROVED) {
-      const isHonestNotFound = nextAnswer === NOT_FOUND_TEXT;
+    if (params.reviewState === QuestionReviewState.APPROVED) {
+      if (item.systemStatus === QuestionSystemStatus.BLOCKED) {
+        throw new AppError("Blocked rows cannot be approved until grounded evidence is found.", {
+          code: "BLOCKED_ROW_CANNOT_BE_APPROVED",
+          status: 400
+        });
+      }
+
       if (!nextAnswer) {
         throw new AppError("Write or generate an answer before approval.", {
           code: "ANSWER_REQUIRED_FOR_APPROVAL",
@@ -397,7 +468,7 @@ export async function reviewQuestionnaireItem(params: {
         });
       }
 
-      if (!isHonestNotFound && currentCitations.length === 0) {
+      if (currentCitations.length === 0) {
         throw new AppError("Supported approved answers must keep at least one citation.", {
           code: "CITATIONS_REQUIRED_FOR_APPROVAL",
           status: 400
@@ -411,12 +482,18 @@ export async function reviewQuestionnaireItem(params: {
       },
       data: {
         answer: nextAnswer,
-        reviewStatus: params.reviewStatus,
-        draftSuggestionApplied: params.reviewStatus === QuestionReviewStatus.APPROVED
+        reviewState: params.reviewState,
+        reviewStatus:
+          params.reviewState === QuestionReviewState.APPROVED
+            ? QuestionReviewStatus.APPROVED
+            : params.reviewState === QuestionReviewState.NEEDS_REVIEW
+              ? QuestionReviewStatus.NEEDS_REVIEW
+              : QuestionReviewStatus.DRAFT,
+        draftSuggestionApplied: params.reviewState === QuestionReviewState.APPROVED
       }
     });
 
-    if (params.reviewStatus === QuestionReviewStatus.APPROVED) {
+    if (params.reviewState === QuestionReviewState.APPROVED) {
       await persistApprovedAnswerFromItem({
         tx,
         workspaceId: access.workspace.id,
@@ -468,7 +545,7 @@ export async function exportQuestionnaireCsv(params: {
       sourceRow: item.sourceRow as Record<string, string>,
       answer: item.answer ?? "",
       citations: jsonToCitations(item.citations),
-      reviewStatus: item.reviewStatus
+      reviewStatus: item.reviewState === QuestionReviewState.APPROVED ? "APPROVED" : item.reviewState === QuestionReviewState.NEEDS_REVIEW ? "NEEDS_REVIEW" : "DRAFT"
     }))
   );
 

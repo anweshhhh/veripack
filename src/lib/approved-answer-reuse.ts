@@ -36,14 +36,25 @@ ORDER BY distance ASC, aa."id" ASC
 LIMIT 12
 `;
 
-async function resolveCitationChunkIds(workspaceId: string, chunkIds: string[]): Promise<ChunkCitation[] | null> {
+async function resolveCitationChunkIds(
+  workspaceId: string,
+  chunkIds: string[],
+  allowedDocumentIds?: string[]
+): Promise<ChunkCitation[] | null> {
   const chunks = await prisma.evidenceChunk.findMany({
     where: {
       id: {
         in: chunkIds
       },
       document: {
-        workspaceId
+        workspaceId,
+        ...(allowedDocumentIds?.length
+          ? {
+              id: {
+                in: allowedDocumentIds
+              }
+            }
+          : {})
       }
     },
     select: {
@@ -112,6 +123,7 @@ export async function isApprovedAnswerStale(approvedAnswerId: string, workspaceI
 export async function findApprovedAnswerReuse(params: {
   workspaceId: string;
   questionText: string;
+  evidenceDocumentIds?: string[];
 }): Promise<ReusedApprovedAnswer | null> {
   const candidates = await prisma.approvedAnswer.findMany({
     where: {
@@ -133,30 +145,35 @@ export async function findApprovedAnswerReuse(params: {
 
   const { normalizedQuestionText, questionTextHash } = buildQuestionTextMetadata(params.questionText);
 
-  const exactCandidate = candidates
+  const exactCandidates = candidates
     .filter(
       (candidate) =>
         candidate.questionTextHash === questionTextHash ||
         candidate.normalizedQuestionText === normalizedQuestionText
     )
-    .sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime())[0];
+    .sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime());
 
-  const maybeExact = await resolveReuseCandidate(params.workspaceId, exactCandidate, "EXACT");
-  if (maybeExact) {
-    return maybeExact;
+  for (const candidate of exactCandidates) {
+    const maybeExact = await resolveReuseCandidate(params.workspaceId, candidate, "EXACT", params.evidenceDocumentIds);
+    if (maybeExact) {
+      return maybeExact;
+    }
   }
 
-  const nearCandidate = candidates
+  const nearCandidates = candidates
     .map((candidate) => ({
       candidate,
       similarity: questionTextNearExactSimilarity(normalizedQuestionText, candidate.normalizedQuestionText)
     }))
     .filter((entry) => entry.similarity >= NEAR_EXACT_MIN_SIMILARITY)
-    .sort((left, right) => right.similarity - left.similarity || right.candidate.updatedAt.getTime() - left.candidate.updatedAt.getTime())[0]?.candidate;
+    .sort((left, right) => right.similarity - left.similarity || right.candidate.updatedAt.getTime() - left.candidate.updatedAt.getTime())
+    .map((entry) => entry.candidate);
 
-  const maybeNear = await resolveReuseCandidate(params.workspaceId, nearCandidate, "NEAR_EXACT");
-  if (maybeNear) {
-    return maybeNear;
+  for (const candidate of nearCandidates) {
+    const maybeNear = await resolveReuseCandidate(params.workspaceId, candidate, "NEAR_EXACT", params.evidenceDocumentIds);
+    if (maybeNear) {
+      return maybeNear;
+    }
   }
 
   const questionEmbedding = await createEmbedding(params.questionText);
@@ -174,10 +191,18 @@ export async function findApprovedAnswerReuse(params: {
     .filter((row) => row.similarity >= SEMANTIC_MIN_SIMILARITY)
     .map((row) => row.id);
 
-  const semanticCandidate = semanticIds
+  const semanticCandidates = semanticIds
     .map((id) => candidates.find((candidate) => candidate.id === id))
-    .find((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate));
-  return resolveReuseCandidate(params.workspaceId, semanticCandidate, "SEMANTIC");
+    .filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate));
+
+  for (const candidate of semanticCandidates) {
+    const maybeSemantic = await resolveReuseCandidate(params.workspaceId, candidate, "SEMANTIC", params.evidenceDocumentIds);
+    if (maybeSemantic) {
+      return maybeSemantic;
+    }
+  }
+
+  return null;
 }
 
 async function resolveReuseCandidate(
@@ -189,7 +214,8 @@ async function resolveReuseCandidate(
         citationChunkIds: string[];
       }
     | undefined,
-  matchType: "EXACT" | "NEAR_EXACT" | "SEMANTIC"
+  matchType: "EXACT" | "NEAR_EXACT" | "SEMANTIC",
+  allowedDocumentIds?: string[]
 ) {
   if (!candidate) {
     return null;
@@ -199,7 +225,7 @@ async function resolveReuseCandidate(
     return null;
   }
 
-  const citations = await resolveCitationChunkIds(workspaceId, candidate.citationChunkIds);
+  const citations = await resolveCitationChunkIds(workspaceId, candidate.citationChunkIds, allowedDocumentIds);
   if (!citations?.length) {
     return null;
   }

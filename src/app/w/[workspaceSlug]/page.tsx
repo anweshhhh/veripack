@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { DocumentStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requirePageWorkspaceAccess } from "@/lib/auth";
+import { describeQuestionnaireEvidenceScope } from "@/lib/questionnaires";
 import {
   WorkspaceHomeStage,
   type WorkspaceHomeNextAction,
@@ -39,6 +40,8 @@ function resolveHomeState(params: {
         totalCount: number;
         approvedCount: number;
         needsReviewCount: number;
+        evidenceScopeMode: "ALL_READY" | "SELECTED_DOCUMENTS";
+        evidenceScopeDocumentIds: string[];
       }
     | null;
 }) {
@@ -50,8 +53,8 @@ function resolveHomeState(params: {
   if (params.evidenceCount === 0) {
     return {
       mode: "empty" as WorkspaceHomeMode,
-      title: "Build the source library.",
-      description: "Add the first file you want cited back.",
+      title: "Start the first proof packet.",
+      description: "Upload source once and let the packet take shape.",
       kicker: "Workspace ready",
       ctaHref: undefined,
       ctaLabel: undefined,
@@ -63,25 +66,26 @@ function resolveHomeState(params: {
   if (params.questionnaireCount === 0) {
     return {
       mode: "questionnaire" as WorkspaceHomeMode,
-      title: "Bring in one buyer file.",
-      description: "Your evidence set is ready for the first questionnaire.",
-      ctaHref: `/w/${params.workspaceSlug}/questionnaires`,
-      ctaLabel: "Import questionnaire",
-      secondaryHref: `/w/${params.workspaceSlug}/evidence`,
-      secondaryLabel: "Open evidence",
+      title: "Add the review packet.",
+      description: `The first packet will start against ${params.readyEvidenceCount} ready source file${params.readyEvidenceCount === 1 ? "" : "s"}.`,
+      ctaHref: `/w/${params.workspaceSlug}/library?tab=questionnaires`,
+      ctaLabel: "Import packet",
+      secondaryHref: undefined,
+      secondaryLabel: undefined,
       kicker: "Workspace primed"
     };
   }
 
   if (!questionnaireReady && params.latestQuestionnaire) {
+    const scope = describeQuestionnaireEvidenceScope(params.latestQuestionnaire);
     return {
       mode: "review" as WorkspaceHomeMode,
       title: "Approve the next grounded answer.",
-      description: "Keep the current row moving with proof in view.",
-      ctaHref: `/w/${params.workspaceSlug}/questionnaires/${params.latestQuestionnaire.id}`,
+      description: `This packet is grounded against ${scope.label.toLowerCase()}.`,
+      ctaHref: `/w/${params.workspaceSlug}/review?questionnaireId=${encodeURIComponent(params.latestQuestionnaire.id)}`,
       ctaLabel: "Continue review",
-      secondaryHref: `/w/${params.workspaceSlug}/questionnaires`,
-      secondaryLabel: "All questionnaires",
+      secondaryHref: undefined,
+      secondaryLabel: undefined,
       kicker: "In review"
     };
   }
@@ -90,11 +94,11 @@ function resolveHomeState(params: {
     return {
       mode: "export" as WorkspaceHomeMode,
       title: "Export the approved file.",
-      description: "The latest questionnaire has settled into a finished file.",
+      description: "The latest packet has settled into a finished file.",
       ctaHref: `/api/questionnaires/${params.latestQuestionnaire.id}/export?workspaceSlug=${encodeURIComponent(params.workspaceSlug)}`,
       ctaLabel: "Export latest",
-      secondaryHref: `/w/${params.workspaceSlug}/questionnaires`,
-      secondaryLabel: "All questionnaires",
+      secondaryHref: undefined,
+      secondaryLabel: undefined,
       kicker: "Ready to finish"
     };
   }
@@ -103,10 +107,10 @@ function resolveHomeState(params: {
     mode: "review" as WorkspaceHomeMode,
     title: "Continue the review workflow.",
     description: "Keep moving through the next answer.",
-    ctaHref: `/w/${params.workspaceSlug}/questionnaires`,
-    ctaLabel: "Open questionnaires",
-    secondaryHref: `/w/${params.workspaceSlug}/evidence`,
-    secondaryLabel: "Open evidence",
+    ctaHref: `/w/${params.workspaceSlug}/review`,
+    ctaLabel: "Open review",
+    secondaryHref: undefined,
+    secondaryLabel: undefined,
     kicker: "Workspace"
   };
 }
@@ -219,21 +223,21 @@ function buildInsightState(params: {
         ? {
             label: "Evidence processing",
             count: params.processingEvidenceCount,
-            href: `/w/${params.workspaceSlug}/evidence`
+            href: `/w/${params.workspaceSlug}/library?tab=evidence`
           }
         : null,
       pendingRowsCount > 0 && params.latestQuestionnaireId
         ? {
             label: "Rows pending",
             count: pendingRowsCount,
-            href: `/w/${params.workspaceSlug}/questionnaires/${params.latestQuestionnaireId}`
+            href: `/w/${params.workspaceSlug}/review?questionnaireId=${encodeURIComponent(params.latestQuestionnaireId)}`
           }
         : null,
       params.staleApprovalsCount > 0
         ? {
             label: "Stale approvals",
             count: params.staleApprovalsCount,
-            href: `/w/${params.workspaceSlug}/questionnaires`
+            href: `/w/${params.workspaceSlug}/library?tab=questionnaires`
           }
         : null
     ].filter((item): item is NonNullable<typeof item> => Boolean(item)),
@@ -315,7 +319,9 @@ export default async function WorkspaceHomePage({ params }: { params: { workspac
         name: true,
         totalCount: true,
         approvedCount: true,
-        needsReviewCount: true
+        needsReviewCount: true,
+        evidenceScopeMode: true,
+        evidenceScopeDocumentIds: true
       }
     }),
     prisma.exportRecord.count({
@@ -355,7 +361,7 @@ export default async function WorkspaceHomePage({ params }: { params: { workspac
         questionnaire: {
           workspaceId: access.workspace.id
         },
-        reviewStatus: "APPROVED",
+        reviewState: "APPROVED",
         updatedAt: {
           gte: sixtyDaysAgo
         }
@@ -405,31 +411,48 @@ export default async function WorkspaceHomePage({ params }: { params: { workspac
       ])
     : ([0, 0, 0] as const);
 
-  const nextActionItem = latestQuestionnaire
-    ? await prisma.questionnaireItem.findFirst({
+  const nextActionCandidates = latestQuestionnaire
+    ? await prisma.questionnaireItem.findMany({
         where: {
           questionnaireId: latestQuestionnaire.id,
-          reviewStatus: {
-            in: ["DRAFT", "NEEDS_REVIEW"]
+          reviewState: {
+            in: ["UNREVIEWED", "NEEDS_REVIEW"]
           }
         },
-        orderBy: [
-          {
-            reviewStatus: "desc"
-          },
-          {
-            rowIndex: "asc"
-          }
-        ],
+        orderBy: {
+          rowIndex: "asc"
+        },
         select: {
           rowIndex: true,
           text: true,
           answer: true,
           citations: true,
-          reviewStatus: true
+          systemStatus: true,
+          reviewState: true
         }
       })
-    : null;
+    : [];
+
+  const nextActionPriority = {
+    READY_UNREVIEWED: 0,
+    PARTIAL_UNREVIEWED: 1,
+    READY_NEEDS_REVIEW: 2,
+    PARTIAL_NEEDS_REVIEW: 3,
+    BLOCKED_NEEDS_REVIEW: 4,
+    BLOCKED_UNREVIEWED: 5,
+    PENDING_UNREVIEWED: 6,
+    PENDING_NEEDS_REVIEW: 7
+  } as const;
+
+  const nextActionItem = nextActionCandidates
+    .slice()
+    .sort((left, right) => {
+      const leftKey = `${left.systemStatus}_${left.reviewState}` as keyof typeof nextActionPriority;
+      const rightKey = `${right.systemStatus}_${right.reviewState}` as keyof typeof nextActionPriority;
+      const leftPriority = nextActionPriority[leftKey] ?? 99;
+      const rightPriority = nextActionPriority[rightKey] ?? 99;
+      return leftPriority - rightPriority || left.rowIndex - right.rowIndex;
+    })[0] ?? null;
 
   const nextAction: WorkspaceHomeNextAction | null = nextActionItem
     ? {
@@ -439,7 +462,8 @@ export default async function WorkspaceHomePage({ params }: { params: { workspac
         answerText: nextActionItem.answer?.trim() || null,
         citationSource: parseCitationDocNames(nextActionItem.citations)[0] ?? null,
         citationCount: parseCitationDocNames(nextActionItem.citations).length,
-        reviewStatus: nextActionItem.reviewStatus
+        systemStatus: nextActionItem.systemStatus,
+        reviewState: nextActionItem.reviewState
       }
     : null;
 

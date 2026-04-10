@@ -15,7 +15,8 @@
     "db:local:down": "docker compose down",
     "db:local:logs": "docker compose logs -f db",
     "db:push": "prisma db push",
-    "db:migrate:deploy": "prisma migrate deploy"
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:seed:home": "node scripts/seed-home-sample-data.mjs"
   },
   "dependencies": {
     "@prisma/client": "^5.19.1",

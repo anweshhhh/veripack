@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { DocumentStatus } from "@prisma/client";
+import { DocumentStatus, EvidenceScopeMode } from "@prisma/client";
 import { chunkText } from "@/lib/chunker";
 import { buildEvidenceBlobPath } from "@/lib/evidence-paths";
 import { EVIDENCE_SUPPORTED_MIME_TYPES, MAX_EVIDENCE_FILE_BYTES } from "@/lib/env";
@@ -9,7 +9,7 @@ import { sha256 } from "@/lib/fingerprint";
 import { createEmbedding } from "@/lib/openai";
 import { prisma } from "@/lib/prisma";
 import { embeddingToVectorLiteral } from "@/lib/retrieval";
-import { putStoredEvidenceObject } from "@/lib/storage";
+import { deleteStoredEvidenceObject, putStoredEvidenceObject } from "@/lib/storage";
 import { requireWorkspaceAccess } from "@/lib/workspaces";
 
 function normalizeEvidenceMimeType(mimeType: string | null | undefined) {
@@ -191,4 +191,74 @@ export async function uploadEvidenceDocument(params: {
       id: document.id
     }
   });
+}
+
+export async function deleteEvidenceDocument(params: {
+  userId: string;
+  workspaceSlug: string;
+  documentId: string;
+}) {
+  const access = await requireWorkspaceAccess(params.userId, params.workspaceSlug, "UPLOAD_EVIDENCE");
+  const document = await prisma.evidenceDocument.findFirst({
+    where: {
+      id: params.documentId,
+      workspaceId: access.workspace.id
+    },
+    select: {
+      id: true,
+      storagePath: true
+    }
+  });
+
+  if (!document) {
+    throw new AppError("Evidence document not found.", {
+      code: "EVIDENCE_NOT_FOUND",
+      status: 404
+    });
+  }
+
+  await deleteStoredEvidenceObject(document.storagePath);
+
+  await prisma.$transaction(async (tx) => {
+    const affectedQuestionnaires = await tx.questionnaire.findMany({
+      where: {
+        workspaceId: access.workspace.id,
+        evidenceScopeMode: EvidenceScopeMode.SELECTED_DOCUMENTS,
+        evidenceScopeDocumentIds: {
+          has: document.id
+        }
+      },
+      select: {
+        id: true,
+        evidenceScopeDocumentIds: true
+      }
+    });
+
+    for (const questionnaire of affectedQuestionnaires) {
+      await tx.questionnaire.update({
+        where: {
+          id: questionnaire.id
+        },
+        data: {
+          evidenceScopeDocumentIds: questionnaire.evidenceScopeDocumentIds.filter((id) => id !== document.id)
+        }
+      });
+    }
+
+    await tx.evidenceChunk.deleteMany({
+      where: {
+        documentId: document.id
+      }
+    });
+
+    await tx.evidenceDocument.delete({
+      where: {
+        id: document.id
+      }
+    });
+  });
+
+  return {
+    documentId: document.id
+  };
 }
